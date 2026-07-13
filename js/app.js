@@ -799,6 +799,9 @@ function applyCurDirUI(mode){
 $('curTowards').addEventListener('click', () => setCurDir('towards'));
 $('curFrom').addEventListener('click', () => setCurDir('from'));
 
+if (window.UTSIM_VERSION){
+  $('verTag').textContent = `v0.${window.UTSIM_VERSION.build} · ${window.UTSIM_VERSION.date}`;
+}
 restoreParams();
 renderBoatSelect();
 compute();
