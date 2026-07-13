@@ -1,4 +1,4 @@
-# Upwind Tactics Simulator
+# Sailing Upwind Tactics Simulator
 
 A single-page web app for simulating upwind sailing tactics.
 
