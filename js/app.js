@@ -30,6 +30,10 @@ function setPhaseMode(mode){
     }
   };
   cvt('windMin'); cvt('windMax');
+  ['windMin','windMax'].forEach(id => {
+    $(id).min = mode === 'twd' ? 0 : -180;
+    $(id).max = mode === 'twd' ? 359 : 180;
+  });
   phaseMode = mode;
   $('pmOffset').classList.toggle('active', mode === 'offset');
   $('pmTwd').classList.toggle('active', mode === 'twd');
@@ -44,6 +48,20 @@ function setPhaseMode(mode){
 }
 const inputs = ['lineLen','markDist','markBrg','windMean','windMin','windMax','tws',
                 'c0d','c0s','c1d','c1s','c2d','c2s','c3d','c3s'].map($);
+
+// compass bearing fields: wrap out-of-range values back into 0–359 on blur
+// (e.g. 450 → 90, −20 → 340); phase fields wrap to ±180 in offset mode
+function wrapOnBlur(id, wrap){
+  const el = $(id);
+  el.addEventListener('change', () => {
+    const v = parseFloat(el.value);
+    if (isFinite(v)) el.value = wrap(v);
+  });
+}
+wrapOnBlur('markBrg',  v => Math.round(norm360(v)));
+wrapOnBlur('windMean', v => Math.round(norm360(v)));
+['windMin','windMax'].forEach(id =>
+  wrapOnBlur(id, v => Math.round(phaseMode === 'twd' ? norm360(v) : norm180(v))));
 
 // ---- boat library: a simple local "database" (localStorage + JSON export/import) ----
 const LS_BOATS = 'utsim.boats.v1', LS_ACTIVE = 'utsim.activeBoat.v1';

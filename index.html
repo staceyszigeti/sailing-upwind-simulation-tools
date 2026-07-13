@@ -199,13 +199,13 @@
       <legend>Course</legend>
       <div class="row"><label for="lineLen">Start line length (m)</label><input id="lineLen" type="number" value="150" step="10" min="30"></div>
       <div class="row"><label for="markDist">Mark distance (m)</label><input id="markDist" type="number" value="1000" step="50" min="200"></div>
-      <div class="row"><label for="markBrg">Mark bearing (°)</label><input id="markBrg" type="number" value="0" step="1"></div>
+      <div class="row"><label for="markBrg">Mark bearing (°)</label><input id="markBrg" type="number" value="0" step="1" min="0" max="359"></div>
       <p class="hint">Mark bearing is the compass bearing from the middle of the start line. The chart is drawn course-up: the mark is always straight up, with the start line at the bottom. The start line is set square to the start→mark axis, so it stays horizontal on the chart regardless of wind direction.</p>
     </fieldset>
 
     <fieldset>
       <legend>Wind (TWD)</legend>
-      <div class="row"><label for="windMean">Mean direction (°)</label><input id="windMean" type="number" value="0" step="1"></div>
+      <div class="row"><label for="windMean">Mean direction (°)</label><input id="windMean" type="number" value="0" step="1" min="0" max="359"></div>
       <div class="phasemode">
         <span class="pm-label">Phase input</span>
         <div class="seg" role="tablist" aria-label="Phase input mode">
@@ -213,8 +213,8 @@
           <button type="button" class="seg-btn" id="pmTwd" role="tab" aria-selected="false">Absolute TWD</button>
         </div>
       </div>
-      <div class="row"><label for="windMin" id="lblMin">Left phase (Δ°)</label><input id="windMin" type="number" value="-12" step="1"></div>
-      <div class="row"><label for="windMax" id="lblMax">Right phase (Δ°)</label><input id="windMax" type="number" value="12" step="1"></div>
+      <div class="row"><label for="windMin" id="lblMin">Left phase (Δ°)</label><input id="windMin" type="number" value="-12" step="1" min="-180" max="180"></div>
+      <div class="row"><label for="windMax" id="lblMax">Right phase (Δ°)</label><input id="windMax" type="number" value="12" step="1" min="-180" max="180"></div>
       <div class="row"><label for="tws">Wind speed (kn)</label><input id="tws" type="number" value="10" step="0.5" min="1"></div>
       <p class="hint" id="phaseHint">Left/right phase given as an offset from the mean (e.g. −12 = 12° left of mean). Switch to <em>Absolute TWD</em> to type the two extreme wind directions directly.</p>
     </fieldset>
