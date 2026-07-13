@@ -3,6 +3,11 @@
 Version numbers (`v0.<n>`) are the commit count, as shown in the app
 header — see the Versioning section of the README.
 
+## v0.11 — 2026-07-13
+
+- Dropped the "(example)" suffix from the default boat names; already
+  stored libraries are migrated on load.
+
 ## v0.10 — 2026-07-13
 
 - Added this changelog.

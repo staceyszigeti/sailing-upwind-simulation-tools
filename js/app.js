@@ -93,23 +93,27 @@ wrapOnBlur('windMean', v => Math.round(norm360(v)));
 // ---- boat library: a simple local "database" (localStorage + JSON export/import) ----
 const LS_BOATS = 'utsim.boats.v1', LS_ACTIVE = 'utsim.activeBoat.v1';
 const DEFAULT_BOATS = [
-  { id:'ilca7', name:'ILCA 7 (example)', polar:[
+  { id:'ilca7', name:'ILCA 7', polar:[
     {tws:5, twa:46, bsp:3.2},{tws:8, twa:44, bsp:4.3},{tws:12, twa:43, bsp:5.1},{tws:16, twa:42, bsp:5.5},{tws:20, twa:42, bsp:5.7}]},
-  { id:'ilca6', name:'ILCA 6 (example)', polar:[
+  { id:'ilca6', name:'ILCA 6', polar:[
     {tws:5, twa:46, bsp:3.0},{tws:8, twa:45, bsp:4.1},{tws:12, twa:43, bsp:4.9},{tws:16, twa:43, bsp:5.3},{tws:20, twa:43, bsp:5.5}]},
-  { id:'i470', name:'470 (example)', polar:[
+  { id:'i470', name:'470', polar:[
     {tws:5, twa:44, bsp:3.7},{tws:8, twa:43, bsp:4.9},{tws:12, twa:42, bsp:5.7},{tws:16, twa:41, bsp:6.1},{tws:20, twa:41, bsp:6.3}]},
-  { id:'f49er', name:'49er (example)', polar:[
+  { id:'f49er', name:'49er', polar:[
     {tws:5, twa:45, bsp:4.5},{tws:8, twa:42, bsp:6.5},{tws:12, twa:40, bsp:8.4},{tws:16, twa:39, bsp:9.4},{tws:20, twa:39, bsp:10.0}]},
-  { id:'f49fx', name:'49erFX (example)', polar:[
+  { id:'f49fx', name:'49erFX', polar:[
     {tws:5, twa:45, bsp:4.3},{tws:8, twa:43, bsp:6.2},{tws:12, twa:41, bsp:8.0},{tws:16, twa:40, bsp:9.0},{tws:20, twa:40, bsp:9.6}]},
-  { id:'keel', name:'Generic keelboat (example)', polar:[
+  { id:'keel', name:'Generic keelboat', polar:[
     {tws:6, twa:45, bsp:4.5},{tws:10, twa:42, bsp:5.8},{tws:14, twa:40, bsp:6.4},{tws:20, twa:39, bsp:6.8}]},
 ];
 function loadBoats(){
   try {
     const b = JSON.parse(localStorage.getItem(LS_BOATS));
-    if (Array.isArray(b) && b.length && b.every(x => x && x.name && Array.isArray(x.polar))) return b;
+    if (Array.isArray(b) && b.length && b.every(x => x && x.name && Array.isArray(x.polar))){
+      // migration: default boats used to be named "… (example)"
+      b.forEach(x => { x.name = x.name.replace(/\s*\(example\)$/, ''); });
+      return b;
+    }
   } catch(e){}
   return JSON.parse(JSON.stringify(DEFAULT_BOATS));
 }
