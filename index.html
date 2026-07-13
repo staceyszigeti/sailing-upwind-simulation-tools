@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upwind Tactics Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sea-deep:#f7f6f1;
+  --sea-panel:#ffffff;
+  --sea-chart:#fdfdfa;
+  --line:#d9d4c6;
+  --ink:#1c1b18;
+  --ink-dim:#5c584d;
+  --cyan:#23507a;
+  --teal:#3a7d5d;
+  --wind-min:#4477aa;
+  --wind-mean:#a98600;
+  --wind-max:#bb3e2e;
+  --danger:#bb3e2e;
+  font-size:15px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--sea-deep);
+  color:var(--ink);
+  font-family:'STIX Two Text',Georgia,serif;
+  min-height:100vh;
+}
+header{
+  display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding:20px 26px 14px;
+  border-bottom:2px solid var(--ink);
+}
+header h1{
+  font-family:'STIX Two Text',serif;
+  font-weight:700;font-size:1.55rem;letter-spacing:.01em;
+}
+header .sub{color:var(--ink-dim);font-size:.9rem;font-style:italic}
+.hbtns{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.modelbtn{
+  background:transparent;border:1px solid var(--cyan);border-radius:2px;
+  color:var(--cyan);font-family:'STIX Two Text',serif;font-weight:600;
+  font-size:.8rem;letter-spacing:.03em;font-variant-caps:small-caps;text-transform:none;
+  padding:6px 14px;cursor:pointer;
+}
+.modelbtn:hover{background:rgba(35,80,122,.08)}
+.modelbtn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+.physfig{
+  margin:10px 0 4px;padding:12px;border:1px solid var(--line);border-radius:3px;
+  background:var(--sea-chart);
+}
+.physfig svg{display:block;width:100%;height:auto;max-width:460px;margin:0 auto}
+.physfig figcaption{
+  margin-top:8px;font-size:.74rem;color:var(--ink-dim);text-align:center;line-height:1.4;
+}
+.formula{
+  display:block;margin:8px 0;padding:8px 12px;border-left:2px solid var(--cyan);
+  background:var(--sea-chart);border-radius:0 6px 6px 0;
+  font-family:'IBM Plex Mono',monospace;font-size:.82rem;color:var(--ink);
+  overflow-x:auto;white-space:nowrap;
+}
+.modal-body p{margin:6px 0;color:var(--ink-dim)}
+.modal-body p strong{color:var(--ink)}
+
+/* ---- model modal ---- */
+.modal-backdrop{
+  position:fixed;inset:0;z-index:50;
+  background:rgba(60,57,50,.45);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.modal-backdrop[hidden]{display:none}
+.modal{
+  background:var(--sea-panel);border:1px solid var(--line);border-radius:3px;
+  max-width:680px;width:100%;max-height:86vh;display:flex;flex-direction:column;
+  box-shadow:0 12px 40px rgba(0,0,0,.18);
+}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:16px 20px 12px;border-bottom:1px solid var(--line);
+}
+.modal-head h2{
+  font-family:'STIX Two Text',serif;font-weight:600;font-size:1.05rem;
+  letter-spacing:.02em;font-variant-caps:small-caps;text-transform:none;color:var(--cyan);
+}
+.modal-close{
+  background:transparent;border:1px solid var(--line);border-radius:2px;
+  color:var(--ink-dim);font-size:.9rem;padding:4px 10px;cursor:pointer;flex-shrink:0;
+}
+.modal-close:hover{color:var(--ink);border-color:var(--ink-dim)}
+.modal-close:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.modal-body{padding:14px 20px 20px;overflow-y:auto;font-size:.86rem;line-height:1.55}
+.modal-body h3{
+  font-family:'STIX Two Text',serif;font-weight:600;font-size:.82rem;
+  letter-spacing:.03em;font-variant-caps:small-caps;text-transform:none;margin:14px 0 8px;
+}
+.modal-body h3.ok{color:var(--teal)}
+.modal-body h3.no{color:var(--danger)}
+.modal-body h3:first-child{margin-top:2px}
+.modal-body ul{list-style:none;padding:0}
+.modal-body li{
+  padding:6px 0 6px 18px;position:relative;color:var(--ink-dim);
+  border-bottom:1px solid rgba(0,0,0,.08);
+}
+.modal-body li:last-child{border-bottom:none}
+.modal-body li::before{content:'▸';position:absolute;left:2px;color:var(--cyan)}
+.modal-body li strong{color:var(--ink);font-weight:600}
+.modal-body em{color:var(--ink)}
+.modal-note{
+  margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:3px;
+  background:var(--sea-chart);color:var(--ink-dim);
+}
+.app{
+  display:grid;grid-template-columns:330px 1fr;gap:0;
+  min-height:calc(100vh - 62px);
+}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+
+/* ---- controls ---- */
+.controls{
+  border-right:1px solid var(--line);
+  padding:16px 18px 40px;
+  overflow-y:auto;max-height:calc(100vh - 62px);
+}
+@media(max-width:900px){.controls{max-height:none;border-right:none;border-bottom:1px solid var(--line)}}
+fieldset{
+  border:1px solid var(--line);border-radius:3px;
+  padding:12px 12px 10px;margin-bottom:14px;background:var(--sea-panel);
+}
+legend{
+  font-family:'STIX Two Text',serif;font-weight:600;
+  font-variant-caps:small-caps;text-transform:none;letter-spacing:.03em;font-size:.8rem;
+  color:var(--cyan);padding:0 6px;
+}
+.row{display:grid;grid-template-columns:1fr 86px;gap:8px;align-items:center;margin-bottom:7px}
+.row label{font-size:.8rem;color:var(--ink-dim)}
+.row input{
+  background:var(--sea-chart);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:.85rem;
+  padding:5px 7px;width:100%;
+}
+.row input:focus{outline:2px solid var(--cyan);outline-offset:1px;border-color:var(--cyan)}
+.cur-grid{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px 8px;align-items:center}
+.cur-grid .hd{font-size:.68rem;color:var(--ink-dim);font-variant-caps:small-caps;text-transform:none;letter-spacing:.02em}
+.cur-grid .pt{font-size:.78rem;color:var(--ink)}
+.cur-grid input{
+  background:var(--sea-chart);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:.82rem;
+  padding:4px 6px;width:100%;
+}
+.cur-grid input:focus{outline:2px solid var(--cyan);outline-offset:1px}
+.hint{font-size:.7rem;color:var(--ink-dim);margin-top:6px;line-height:1.35}
+.phasemode{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 8px}
+.pm-label{font-size:.8rem;color:var(--ink-dim)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.seg-btn{
+  background:var(--sea-chart);border:none;color:var(--ink-dim);
+  font-family:'STIX Two Text',serif;font-weight:600;font-size:.7rem;
+  letter-spacing:.02em;font-variant-caps:small-caps;text-transform:none;padding:5px 10px;cursor:pointer;
+}
+.seg-btn + .seg-btn{border-left:1px solid var(--line)}
+.seg-btn.active{background:var(--cyan);color:#ffffff}
+.seg-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+
+/* ---- boat library ---- */
+.boatbar{display:flex;flex-direction:column;gap:8px}
+.boatbar select{
+  background:var(--sea-chart);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:.85rem;padding:6px 8px;width:100%;
+}
+.boatbar select:focus{outline:2px solid var(--cyan);outline-offset:1px}
+.boatbtns{display:flex;gap:6px;flex-wrap:wrap}
+.sbtn{
+  background:transparent;border:1px solid var(--line);border-radius:2px;
+  color:var(--ink-dim);font-family:'STIX Two Text',serif;font-weight:600;
+  font-size:.72rem;letter-spacing:.02em;font-variant-caps:small-caps;text-transform:none;
+  padding:4px 10px;cursor:pointer;
+}
+.sbtn:hover{border-color:var(--cyan);color:var(--cyan)}
+.sbtn:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+.pbtn{
+  background:var(--cyan);border:none;border-radius:2px;color:#ffffff;
+  font-family:'STIX Two Text',serif;font-weight:600;font-size:.8rem;
+  letter-spacing:.02em;font-variant-caps:small-caps;text-transform:none;padding:6px 16px;cursor:pointer;
+}
+.pbtn:hover{filter:brightness(1.12)}
+.boatinfo{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:.74rem;color:var(--teal)}
+.polar-table{width:100%;border-collapse:collapse;margin-top:6px}
+.polar-table th{font-size:.68rem;font-variant-caps:small-caps;text-transform:none;letter-spacing:.02em;color:var(--ink-dim);
+  text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+.polar-table td{padding:3px 4px}
+.polar-table input{
+  width:100%;background:var(--sea-chart);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:.82rem;padding:4px 6px;
+}
+.polar-table input:focus{outline:2px solid var(--cyan);outline-offset:1px}
+.polar-table .rmrow{
+  background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:.9rem;padding:2px 6px;
+}
+#boatName{
+  background:var(--sea-chart);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);font-size:.88rem;padding:6px 8px;width:100%;
+}
+#boatName:focus{outline:2px solid var(--cyan);outline-offset:1px}
+.editor-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+
+/* ---- chart area ---- */
+.stage{display:flex;flex-direction:column;padding:14px 18px 26px;gap:12px}
+.chartwrap{position:relative;background:var(--sea-chart);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+canvas{display:block;width:100%;height:auto}
+.legend{
+  position:absolute;top:10px;left:12px;display:flex;flex-direction:column;gap:4px;
+  background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:2px;padding:8px 11px;
+  font-size:.72rem;
+}
+.legend .li{display:flex;align-items:center;gap:7px;color:var(--ink-dim)}
+.legend .sw{width:20px;height:0;border-top:2.5px solid}
+.legend .sw.cur{border-top:2px dashed var(--teal)}
+.playbar{
+  position:absolute;bottom:10px;left:12px;display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:2px;padding:6px 11px;
+}
+.playbar button{
+  background:var(--cyan);border:none;border-radius:2px;color:#ffffff;
+  font-family:'STIX Two Text',serif;font-weight:600;font-size:.85rem;
+  letter-spacing:.02em;font-variant-caps:small-caps;text-transform:none;padding:5px 14px;cursor:pointer;
+}
+.playbar button:hover{filter:brightness(1.12)}
+.playbar .clock{font-family:'IBM Plex Mono',monospace;font-size:.85rem;color:var(--ink)}
+
+/* ---- results ---- */
+.figcap{
+  font-size:.8rem;color:var(--ink-dim);line-height:1.5;
+  margin:-2px 4px 2px;
+}
+.figcap strong{color:var(--ink);font-weight:600}
+.results{background:var(--sea-panel);border:1px solid var(--line);border-radius:3px;padding:14px 16px}
+.results h2{
+  font-family:'STIX Two Text',serif;font-weight:600;
+  font-size:.92rem;color:var(--ink);margin-bottom:10px;
+}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{font-size:.72rem;font-variant-caps:small-caps;text-transform:none;letter-spacing:.02em;color:var(--ink);
+   text-align:left;padding:5px 8px;border-top:2px solid var(--ink);border-bottom:1px solid var(--ink)}
+td{padding:7px 8px;border-bottom:1px solid rgba(0,0,0,.12);font-family:'IBM Plex Mono',monospace}
+tbody tr:last-child td{border-bottom:2px solid var(--ink)}
+td.name{font-family:'STIX Two Text',serif}
+td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
+td.win{color:var(--teal);font-weight:500}
+.summary{margin-top:10px;font-size:.87rem;line-height:1.5}
+.summary strong{color:var(--teal)}
+.summary .warn{color:var(--danger)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Upwind Tactics Simulator</h1>
+  <span class="sub">start → windward mark · side selection under current + wind oscillation</span>
+  <div class="hbtns">
+    <button id="physBtn" class="modelbtn">Model physics</button>
+    <button id="modelBtn" class="modelbtn">Model assumptions</button>
+  </div>
+</header>
+
+<div class="modal-backdrop" id="boatModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="boatModalTitle">
+    <div class="modal-head">
+      <h2 id="boatModalTitle">Edit boat</h2>
+      <button id="boatModalClose" class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="row" style="grid-template-columns:120px 1fr">
+        <label for="boatName">Boat name</label>
+        <input id="boatName" type="text" placeholder="e.g. ILCA 7">
+      </div>
+      <h3 class="ok" style="margin-top:12px">Upwind polar</h3>
+      <p>One row per wind speed: the optimal upwind tacking angle to the true wind and the boat speed through the water. Between rows the simulation interpolates linearly; outside the range it clamps to the nearest row. One row is enough for a constant-performance boat.</p>
+      <table class="polar-table">
+        <thead><tr><th>TWS (kn)</th><th>Upwind TWA (°)</th><th>Boat speed (kn)</th><th></th></tr></thead>
+        <tbody id="polarRows"></tbody>
+      </table>
+      <button type="button" class="sbtn" id="polarAdd" style="margin-top:8px">+ Add row</button>
+      <div class="editor-actions">
+        <button type="button" class="sbtn" id="boatCancel">Cancel</button>
+        <button type="button" class="pbtn" id="boatSave">Save boat</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="physModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="physTitle">
+    <div class="modal-head">
+      <h2 id="physTitle">How the simulation works</h2>
+      <button id="physClose" class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <h3 class="ok">1 · Motion: vector addition every 2 seconds</h3>
+      <p>The boat is a point mass integrated with a simple time step (<strong>dt = 2 s</strong>). Its velocity <strong>over the ground</strong> is the sum of two vectors: the velocity through the water (pointed along the heading = wind direction ± tacking angle) and the local current. The tacking angle and boat speed come from the selected boat's <strong>upwind polar</strong>, linearly interpolated at the entered wind speed, and stay constant for the whole run.</p>
+      <span class="formula">V_ground = V_boat(heading, through water) + V_current(x, y)</span>
+      <span class="formula">position(t+dt) = position(t) + V_ground · dt</span>
+      <figure class="physfig">
+        <svg viewBox="0 0 340 190" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace" font-size="11">
+          <defs>
+            <marker id="ah-c" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#23507a"/></marker>
+            <marker id="ah-t" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3a7d5d"/></marker>
+            <marker id="ah-y" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#a98600"/></marker>
+          </defs>
+          <line x1="55" y1="160" x2="150" y2="42" stroke="#23507a" stroke-width="2.4" marker-end="url(#ah-c)"/>
+          <text x="58" y="92" fill="#23507a">V boat</text>
+          <text x="58" y="105" fill="#5c584d" font-size="9">(through water)</text>
+          <line x1="150" y1="42" x2="228" y2="72" stroke="#3a7d5d" stroke-width="2.4" marker-end="url(#ah-t)"/>
+          <text x="196" y="42" fill="#3a7d5d">V current</text>
+          <line x1="55" y1="160" x2="228" y2="72" stroke="#a98600" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#ah-y)"/>
+          <text x="150" y="150" fill="#a98600">V ground</text>
+          <text x="150" y="163" fill="#5c584d" font-size="9">(what the chart draws)</text>
+          <circle cx="55" cy="160" r="4" fill="#1c1b18"/>
+          <text x="42" y="180" fill="#5c584d" font-size="9">boat</text>
+        </svg>
+        <figcaption>A current with a component towards the mark increases VMG over ground; a cross component bends the drawn track away from the sailed heading.</figcaption>
+      </figure>
+
+      <h3 class="ok">2 · The current field: interpolation between your 4 measurements</h3>
+      <p>The measured currents (start, mark, left and right layline) are blended into a continuous field by <strong>inverse-distance weighting</strong>: at any position, nearby measurements dominate, distant ones fade out with the square of the distance. Points you leave blank are treated as <em>not measured</em> and dropped from the sum — so with only two points filled, the whole field is interpolated from those two, never from a false zero. With no points measured at all, the field is simply zero everywhere.</p>
+      <span class="formula">V_current(P) = Σ wᵢ·Vᵢ / Σ wᵢ &nbsp;&nbsp;where&nbsp;&nbsp; wᵢ = 1 / dᵢ²</span>
+      <figure class="physfig">
+        <svg viewBox="0 0 340 210" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace" font-size="10">
+          <defs>
+            <marker id="ah-t2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3a7d5d"/></marker>
+            <marker id="ah-t3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#6aa88a"/></marker>
+          </defs>
+          <!-- measurement points -->
+          <g stroke="#3a7d5d" stroke-width="2.2" fill="#3a7d5d">
+            <circle cx="170" cy="28" r="3.5"/><line x1="170" y1="28" x2="206" y2="40" marker-end="url(#ah-t2)"/>
+            <circle cx="170" cy="182" r="3.5"/><line x1="170" y1="182" x2="200" y2="182" marker-end="url(#ah-t2)"/>
+            <circle cx="40" cy="170" r="3.5"/><line x1="40" y1="170" x2="66" y2="162" marker-end="url(#ah-t2)"/>
+            <circle cx="300" cy="170" r="3.5"/><line x1="300" y1="170" x2="322" y2="186" marker-end="url(#ah-t2)"/>
+          </g>
+          <text x="180" y="22" fill="#5c584d">mark</text>
+          <text x="180" y="200" fill="#5c584d">start</text>
+          <text x="16" y="192" fill="#5c584d">left LL</text>
+          <text x="262" y="200" fill="#5c584d">right LL</text>
+          <!-- distances to sample point -->
+          <g stroke="#d9d4c6" stroke-width="1" stroke-dasharray="3 4">
+            <line x1="170" y1="28" x2="140" y2="110"/>
+            <line x1="170" y1="182" x2="140" y2="110"/>
+            <line x1="40" y1="170" x2="140" y2="110"/>
+            <line x1="300" y1="170" x2="140" y2="110"/>
+          </g>
+          <!-- blended sample -->
+          <circle cx="140" cy="110" r="4" fill="#1c1b18"/>
+          <line x1="140" y1="110" x2="172" y2="115" stroke="#6aa88a" stroke-width="2.6" marker-end="url(#ah-t3)"/>
+          <text x="118" y="98" fill="#1c1b18">boat position</text>
+          <text x="176" y="130" fill="#6aa88a">blended current</text>
+        </svg>
+        <figcaption>Wherever the boat is, the current it feels is the distance-weighted mix of the four measurements — this is also what the faint arrow grid on the chart shows.</figcaption>
+      </figure>
+
+      <h3 class="ok">3 · The tack decision: current-corrected laylines</h3>
+      <p>At every step the model asks: <strong>if I tacked right now, would my course over ground on the other tack point at the mark?</strong> It computes the opposite tack's ground vector (boat vector on the other heading + local current) and compares its direction with the bearing to the mark. When the two align — the sign of the angle between them flips — the boat tacks.</p>
+      <span class="formula">tack when: angle( V_ground_opposite , bearing to mark ) crosses 0</span>
+      <p><strong>Direct sailing (fetch mode).</strong> In parallel, the model checks whether the mark is reachable <em>without</em> beating: it solves for the current-compensated heading whose ground velocity points straight at the mark, and if that heading lies outside the no-go zone (≥ TWA off the wind), the boat steers it directly. This mode takes over exactly where the direct heading exits the no-go zone — i.e. on the current-corrected layline — so the final leg is a continuously corrected curve that always converges on the mark, recovering any drift-induced overstand along the way. A run where even this cannot make progress (current stronger than the boat) is reported as unreachable.</p>
+      <figure class="physfig">
+        <svg viewBox="0 0 340 230" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace" font-size="10">
+          <defs>
+            <marker id="ah-t4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3a7d5d"/></marker>
+          </defs>
+          <!-- mark -->
+          <circle cx="120" cy="26" r="6" fill="#d9822b"/>
+          <text x="132" y="30" fill="#5c584d">mark</text>
+          <!-- geometric layline (no current) -->
+          <line x1="120" y1="26" x2="300" y2="206" stroke="#5c584d" stroke-width="1.2" stroke-dasharray="6 6" opacity="0.55"/>
+          <text x="238" y="128" fill="#5c584d" opacity="0.8">geometric</text>
+          <text x="238" y="140" fill="#5c584d" opacity="0.8">layline</text>
+          <!-- current-corrected layline -->
+          <line x1="120" y1="26" x2="252" y2="206" stroke="#23507a" stroke-width="1.6"/>
+          <text x="128" y="150" fill="#23507a">corrected</text>
+          <text x="128" y="162" fill="#23507a">layline (COG)</text>
+          <!-- boat track: sails right, tacks on corrected line -->
+          <path d="M 30 206 L 213 152 L 120 26" fill="none" stroke="#4477aa" stroke-width="2.6"/>
+          <circle cx="213" cy="152" r="4" fill="#4477aa"/>
+          <text x="20" y="222" fill="#4477aa">start</text>
+          <text x="196" y="176" fill="#4477aa">tack here</text>
+          <!-- current arrow -->
+          <line x1="272" y1="60" x2="238" y2="72" stroke="#3a7d5d" stroke-width="2.2" marker-end="url(#ah-t4)"/>
+          <text x="238" y="52" fill="#3a7d5d">current</text>
+        </svg>
+        <figcaption>With current pushing towards the course, the true (COG) layline sits inside the geometric one — the boat tacks earlier than the dashed reference suggests. The opposite current shifts it outside.</figcaption>
+      </figure>
+
+      <h3 class="ok">4 · The six runs</h3>
+      <p>Each scenario–side pair is simulated independently: <strong>3 wind directions</strong> (left phase, mean, right phase — each held constant for the whole run) × <strong>2 strategies</strong> (left side = starboard tack first, right side = port tack first). All runs start from the middle of the line. A run ends when the boat is within <strong>18 m</strong> of the mark (the final metres are sailed in fetch mode, homing on the mark); the elapsed times feed the results table.</p>
+      <p>Two guards keep the integration honest: after a tack the boat must sail at least <strong>20 s</strong> before tacking again (prevents oscillation on the layline), and a run is abandoned after 4 simulated hours (reported as unreachable — typically when the current overpowers the boat). The chart frame and the four current measurement points are fixed to the start→mark course axis, so changing the wind direction moves the trajectories but never the course, the frame, or the current field.</p>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modelModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modelTitle">
+    <div class="modal-head">
+      <h2 id="modelTitle">What the simulation does — and does not — account for</h2>
+      <button id="modelClose" class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <h3 class="ok">Accounted for</h3>
+      <ul>
+        <li><strong>Current as a vector, everywhere on the course.</strong> Ground velocity = boat velocity through the water + local current. Head current slows progress towards the mark, favourable current speeds it up, and cross current pushes the boat sideways.</li>
+        <li><strong>Spatially varying current.</strong> The field is interpolated between your 4 measurement points (start, mark, left/right layline) by inverse-distance weighting, so each side of the course can have genuinely different water.</li>
+        <li><strong>Current-corrected laylines.</strong> The boat tacks when the <em>course over ground</em> of the opposite tack fetches the mark — not the geometric layline. The dashed grey lines are shown only as a no-current reference for comparison.</li>
+        <li><strong>Wind direction scenarios.</strong> Each run uses a fixed wind direction: left phase, mean, or right phase. Comparing the three shows how sensitive the side choice is to where the wind sits in its oscillation.</li>
+        <li><strong>Boat performance from an upwind polar.</strong> The tacking angle and boat speed are read from the selected boat's polar table, linearly interpolated at the entered wind speed. Within a run they are constant.</li>
+        <li><strong>Fetch/reach sailing on the final approach.</strong> When the mark no longer requires beating, the boat steers a current-compensated heading straight at it — so it always closes on the mark, recovers small overstands, and effectively tacks exactly on the current-corrected layline.</li>
+        <li><strong>Start line geometry.</strong> Line length and its orientation square to the start→mark axis; all runs start from the middle of the line. A line skewed relative to the wind therefore shows up as line bias in the geometry.</li>
+      </ul>
+
+      <h3 class="no">Not accounted for</h3>
+      <ul>
+        <li><strong>Current wind (tidal wind).</strong> In reality the boat sails in the wind relative to the water, i.e. true wind minus the current vector. A 0.5–1 kn current can rotate and change the effective wind by a few degrees / tenths of a knot. Here the boat holds its angle to the true (over-ground) wind.</li>
+        <li><strong>Wind oscillation during a run.</strong> The wind direction is constant within each run — the boat does not gain from tacking on shifts. Phases are compared as separate static scenarios, not as a time series.</li>
+        <li><strong>Wind speed variation and sailing modes.</strong> Wind speed sets the polar point but is constant in time and uniform across the course; there is no pinching/footing trade-off, no wave-state effect, and no gust response.</li>
+        <li><strong>Tack losses.</strong> Tacks are instantaneous and free — no speed loss or turning time.</li>
+        <li><strong>Wind speed gradient / pressure differences.</strong> More breeze on one side of the course is not modelled.</li>
+        <li><strong>Other boats.</strong> No dirty air, no right-of-way situations, no start-line traffic.</li>
+        <li><strong>Waves, leeway, sea state.</strong> Leeway is implicitly folded into the tacking angle you enter; waves are ignored.</li>
+        <li><strong>Start position and timing.</strong> Every run starts at the middle of the line at t = 0 — pin-end vs boat-end bias is visible in the geometry but not exploited by the simulated boat.</li>
+        <li><strong>Time-varying current.</strong> The current field is frozen in time (no tidal cycle within a beat).</li>
+      </ul>
+
+      <p class="modal-note">Practical reading: the tool answers <em>"given this water and these three wind directions, which side is faster on pure geometry + current?"</em> Treat the second list as the tactical layer you add on top of it.</p>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="controls">
+
+    <fieldset>
+      <legend>Course</legend>
+      <div class="row"><label for="lineLen">Start line length (m)</label><input id="lineLen" type="number" value="150" step="10" min="30"></div>
+      <div class="row"><label for="markDist">Mark distance (m)</label><input id="markDist" type="number" value="1000" step="50" min="200"></div>
+      <div class="row"><label for="markBrg">Mark bearing (°)</label><input id="markBrg" type="number" value="0" step="1"></div>
+      <p class="hint">Mark bearing is the compass bearing from the middle of the start line. The chart is drawn course-up: the mark is always straight up, with the start line at the bottom. The start line is set square to the start→mark axis, so it stays horizontal on the chart regardless of wind direction.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Wind (TWD)</legend>
+      <div class="row"><label for="windMean">Mean direction (°)</label><input id="windMean" type="number" value="0" step="1"></div>
+      <div class="phasemode">
+        <span class="pm-label">Phase input</span>
+        <div class="seg" role="tablist" aria-label="Phase input mode">
+          <button type="button" class="seg-btn active" id="pmOffset" role="tab" aria-selected="true">Offset Δ°</button>
+          <button type="button" class="seg-btn" id="pmTwd" role="tab" aria-selected="false">Absolute TWD</button>
+        </div>
+      </div>
+      <div class="row"><label for="windMin" id="lblMin">Left phase (Δ°)</label><input id="windMin" type="number" value="-12" step="1"></div>
+      <div class="row"><label for="windMax" id="lblMax">Right phase (Δ°)</label><input id="windMax" type="number" value="12" step="1"></div>
+      <div class="row"><label for="tws">Wind speed (kn)</label><input id="tws" type="number" value="10" step="0.5" min="1"></div>
+      <p class="hint" id="phaseHint">Left/right phase given as an offset from the mean (e.g. −12 = 12° left of mean). Switch to <em>Absolute TWD</em> to type the two extreme wind directions directly.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Boat</legend>
+      <div class="boatbar">
+        <select id="boatSel" aria-label="Select boat"></select>
+        <div class="boatbtns">
+          <button type="button" class="sbtn" id="boatNew">New</button>
+          <button type="button" class="sbtn" id="boatEdit">Edit</button>
+          <button type="button" class="sbtn" id="boatDel">Delete</button>
+          <button type="button" class="sbtn" id="boatExp">Export</button>
+          <button type="button" class="sbtn" id="boatImpBtn">Import</button>
+          <input id="boatImp" type="file" accept=".json,application/json" hidden>
+        </div>
+      </div>
+      <div id="boatInfo" class="boatinfo"></div>
+      <p class="hint">Boats and their upwind polar tables are stored locally in your browser (localStorage). Use Export / Import to back up the library or move it between machines as a JSON file. The tacking angle and boat speed used by the simulation are interpolated from the polar at the current wind speed.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Current — 4 measurement points</legend>
+      <div class="phasemode">
+        <span class="pm-label">Direction convention</span>
+        <div class="seg" role="tablist" aria-label="Current direction convention">
+          <button type="button" class="seg-btn active" id="curTowards" role="tab" aria-selected="true">Towards</button>
+          <button type="button" class="seg-btn" id="curFrom" role="tab" aria-selected="false">From</button>
+        </div>
+      </div>
+      <div class="cur-grid">
+        <span class="hd"></span><span class="hd" id="curDirHd">Set (°, towards)</span><span class="hd">Rate (m/min)</span>
+        <span class="pt">Start</span><input id="c0d" type="number" value="90" step="5"><input id="c0s" type="number" value="12" step="1" min="0">
+        <span class="pt">Mark</span><input id="c1d" type="number" value="110" step="5"><input id="c1s" type="number" value="18" step="1" min="0">
+        <span class="pt">Left layline</span><input id="c2d" type="number" value="80" step="5"><input id="c2s" type="number" value="9" step="1" min="0">
+        <span class="pt">Right layline</span><input id="c3d" type="number" value="120" step="5"><input id="c3s" type="number" value="15" step="1" min="0">
+      </div>
+      <div id="curStatus" class="boatinfo"></div>
+      <p class="hint">Direction is either where the water flows <em>towards</em> (set) or where it comes <em>from</em> — pick the convention above. Rate is in metres per minute. Leave a point's rate blank if you didn't measure there — it is then excluded from the interpolation (not treated as zero). The field is built from the measured points only, by inverse-distance weighting (IDW). With no measured points the simulation runs with no current. The left/right points sit halfway between the start and the mark, on the laylines, fixed to the course axis — changing the wind never moves your measurement locations.</p>
+    </fieldset>
+
+  </div>
+
+  <div class="stage">
+    <div class="chartwrap">
+      <canvas id="chart"></canvas>
+      <div class="legend">
+        <div class="li"><span class="sw" style="border-color:var(--wind-min)"></span>Left phase wind</div>
+        <div class="li"><span class="sw" style="border-color:var(--wind-mean)"></span>Mean wind</div>
+        <div class="li"><span class="sw" style="border-color:var(--wind-max)"></span>Right phase wind</div>
+        <div class="li"><span class="sw cur"></span>Current</div>
+      </div>
+      <div class="playbar">
+        <button id="playBtn">Play</button>
+        <span class="clock" id="clock">00:00</span>
+      </div>
+    </div>
+    <p class="figcap"><strong>Figure 1.</strong> Course-up view of the beat. Solid curves: simulated ground tracks for three wind scenarios × two side strategies; dashed lines: no-current reference laylines; green arrows: interpolated current field with the four measurement points.</p>
+
+    <div class="results">
+      <h2>Table 1. Elapsed time to the mark</h2>
+      <table>
+        <thead><tr><th>Wind scenario</th><th>Left side</th><th>Right side</th><th>Delta</th><th>Favoured</th></tr></thead>
+        <tbody id="resBody"></tbody>
+      </table>
+      <div class="summary" id="summary"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const KN = 0.514444;               // knots → m/s
+const D2R = Math.PI/180;
+const dirVec = deg => ({x: Math.sin(deg*D2R), y: Math.cos(deg*D2R)}); // compass bearing → unit vector (x=east, y=north)
+const brgOf = v => (Math.atan2(v.x, v.y)/D2R + 360) % 360;
+const norm180 = a => { a = ((a % 360) + 540) % 360 - 180; return a; };
+const fmtT = s => {
+  if (!isFinite(s)) return '—';
+  const m = Math.floor(s/60), ss = Math.round(s%60);
+  return String(m).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+};
+
+const $ = id => document.getElementById(id);
+
+// phase input mode: 'offset' (Δ° from mean) or 'twd' (absolute bearing)
+let phaseMode = 'offset';
+// current direction convention: 'towards' (set) or 'from'
+let curDir = 'towards';
+function norm360(a){ return ((a % 360) + 360) % 360; }
+function setPhaseMode(mode){
+  if (mode === phaseMode) return;
+  const mean = parseFloat($('windMean').value) || 0;
+  const cvt = id => {
+    const cur = parseFloat($(id).value) || 0;
+    if (mode === 'twd'){          // offset → absolute
+      $(id).value = Math.round(norm360(mean + cur));
+    } else {                      // absolute → offset
+      let d = ((cur - mean + 540) % 360) - 180;
+      $(id).value = Math.round(d);
+    }
+  };
+  cvt('windMin'); cvt('windMax');
+  phaseMode = mode;
+  $('pmOffset').classList.toggle('active', mode === 'offset');
+  $('pmTwd').classList.toggle('active', mode === 'twd');
+  $('pmOffset').setAttribute('aria-selected', mode === 'offset');
+  $('pmTwd').setAttribute('aria-selected', mode === 'twd');
+  $('lblMin').textContent = mode === 'offset' ? 'Left phase (Δ°)' : 'Left phase TWD (°)';
+  $('lblMax').textContent = mode === 'offset' ? 'Right phase (Δ°)' : 'Right phase TWD (°)';
+  $('phaseHint').innerHTML = mode === 'offset'
+    ? 'Left/right phase given as an offset from the mean (e.g. −12 = 12° left of mean). Switch to <em>Absolute TWD</em> to type the two extreme wind directions directly.'
+    : 'Left/right phase given as absolute wind directions (TWD), e.g. 348 and 012. Switch to <em>Offset Δ°</em> to enter them relative to the mean instead.';
+  compute();
+}
+const inputs = ['lineLen','markDist','markBrg','windMean','windMin','windMax','tws',
+                'c0d','c0s','c1d','c1s','c2d','c2s','c3d','c3s'].map($);
+
+// ---- boat library: a simple local "database" (localStorage + JSON export/import) ----
+const LS_BOATS = 'utsim.boats.v1', LS_ACTIVE = 'utsim.activeBoat.v1';
+const DEFAULT_BOATS = [
+  { id:'ilca7', name:'ILCA 7 (example)', polar:[
+    {tws:5, twa:46, bsp:3.2},{tws:8, twa:44, bsp:4.3},{tws:12, twa:43, bsp:5.1},{tws:16, twa:42, bsp:5.5},{tws:20, twa:42, bsp:5.7}]},
+  { id:'ilca6', name:'ILCA 6 (example)', polar:[
+    {tws:5, twa:46, bsp:3.0},{tws:8, twa:45, bsp:4.1},{tws:12, twa:43, bsp:4.9},{tws:16, twa:43, bsp:5.3},{tws:20, twa:43, bsp:5.5}]},
+  { id:'i470', name:'470 (example)', polar:[
+    {tws:5, twa:44, bsp:3.7},{tws:8, twa:43, bsp:4.9},{tws:12, twa:42, bsp:5.7},{tws:16, twa:41, bsp:6.1},{tws:20, twa:41, bsp:6.3}]},
+  { id:'f49er', name:'49er (example)', polar:[
+    {tws:5, twa:45, bsp:4.5},{tws:8, twa:42, bsp:6.5},{tws:12, twa:40, bsp:8.4},{tws:16, twa:39, bsp:9.4},{tws:20, twa:39, bsp:10.0}]},
+  { id:'f49fx', name:'49erFX (example)', polar:[
+    {tws:5, twa:45, bsp:4.3},{tws:8, twa:43, bsp:6.2},{tws:12, twa:41, bsp:8.0},{tws:16, twa:40, bsp:9.0},{tws:20, twa:40, bsp:9.6}]},
+  { id:'keel', name:'Generic keelboat (example)', polar:[
+    {tws:6, twa:45, bsp:4.5},{tws:10, twa:42, bsp:5.8},{tws:14, twa:40, bsp:6.4},{tws:20, twa:39, bsp:6.8}]},
+];
+function loadBoats(){
+  try {
+    const b = JSON.parse(localStorage.getItem(LS_BOATS));
+    if (Array.isArray(b) && b.length && b.every(x => x && x.name && Array.isArray(x.polar))) return b;
+  } catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_BOATS));
+}
+let boats = loadBoats();
+// one-time seed merge: add any new default boats missing from an already-stored library
+const SEED_KEY = 'utsim.seed.v3';
+try {
+  if (!localStorage.getItem(SEED_KEY)){
+    let added = false;
+    DEFAULT_BOATS.forEach(d => {
+      if (!boats.some(b => b.id === d.id)){ boats.push(JSON.parse(JSON.stringify(d))); added = true; }
+    });
+    localStorage.setItem(SEED_KEY, '1');
+    if (added) localStorage.setItem(LS_BOATS, JSON.stringify(boats));
+  }
+} catch(e){}
+let activeId = null;
+try { activeId = localStorage.getItem(LS_ACTIVE); } catch(e){}
+if (!boats.some(b => b.id === activeId)) activeId = boats[0].id;
+function persistBoats(){
+  try {
+    localStorage.setItem(LS_BOATS, JSON.stringify(boats));
+    localStorage.setItem(LS_ACTIVE, activeId);
+  } catch(e){}
+}
+const activeBoat = () => boats.find(b => b.id === activeId) || boats[0];
+
+// linear interpolation in the boat's upwind polar; clamps outside the table range
+function polarAt(boat, tws){
+  const pts = [...boat.polar].sort((a,b) => a.tws - b.tws);
+  if (!pts.length) return { twa: 42, bsp: 5 };
+  if (tws <= pts[0].tws) return { twa: pts[0].twa, bsp: pts[0].bsp };
+  const last = pts[pts.length-1];
+  if (tws >= last.tws) return { twa: last.twa, bsp: last.bsp };
+  for (let i = 1; i < pts.length; i++){
+    if (pts[i].tws >= tws){
+      const a = pts[i-1], b = pts[i], f = (tws - a.tws) / (b.tws - a.tws);
+      return { twa: a.twa + (b.twa - a.twa)*f, bsp: a.bsp + (b.bsp - a.bsp)*f };
+    }
+  }
+  return { twa: last.twa, bsp: last.bsp };
+}
+
+function renderBoatSelect(){
+  const sel = $('boatSel');
+  sel.innerHTML = '';
+  boats.forEach(b => {
+    const o = document.createElement('option');
+    o.value = b.id; o.textContent = b.name;
+    sel.appendChild(o);
+  });
+  sel.value = activeId;
+  renderBoatInfo();
+}
+function renderBoatInfo(){
+  const tws = parseFloat($('tws').value) || 0;
+  const b = activeBoat();
+  const pol = polarAt(b, tws);
+  $('boatInfo').textContent =
+    `@ ${tws} kn TWS → TWA ${pol.twa.toFixed(1)}°, ${pol.bsp.toFixed(2)} kn (${b.polar.length}-point polar)`;
+}
+
+const MPM = 1/60;   // metres per minute → m/s
+function measuredCur(dId, sId){
+  const raw = $(sId).value.trim();
+  const measured = raw !== '' && isFinite(parseFloat(raw));
+  // stored direction is always "towards"; if the user enters "from", flip by 180°
+  let d = parseFloat($(dId).value) || 0;
+  if (curDir === 'from') d += 180;
+  return { d, s: (parseFloat(raw) || 0) * MPM, measured };
+}
+
+function readParams(){
+  const v = id => parseFloat($(id).value) || 0;
+  const mean = v('windMean');
+  const tws = Math.max(0.5, v('tws'));
+  const pol = polarAt(activeBoat(), tws);
+  // explicit phase interpretation: offset from mean, or absolute TWD
+  const phase = x => phaseMode === 'offset' ? mean + x : x;
+  return {
+    lineLen: Math.max(10, v('lineLen')),
+    markDist: Math.max(100, v('markDist')),
+    markBrg: v('markBrg'),
+    windMean: mean,
+    windMin: phase(v('windMin')),
+    windMax: phase(v('windMax')),
+    tws,
+    twa: Math.min(80, Math.max(20, pol.twa)),
+    bsp: Math.max(0.3, pol.bsp) * KN,
+    cur: [
+      measuredCur('c0d','c0s'),
+      measuredCur('c1d','c1s'),
+      measuredCur('c2d','c2s'),
+      measuredCur('c3d','c3s'),
+    ]
+  };
+}
+
+// ---- geometry (true compass frame) ----
+// The start line is square to the start→mark axis (mark bearing), NOT to the wind.
+function geometry(p){
+  const m = dirVec(p.markBrg);                        // up the course axis
+  const M = { x: m.x*p.markDist, y: m.y*p.markDist };
+  const rL = { x: m.y, y: -m.x };                     // along the start line, to the right of the course axis
+  const half = p.lineLen/2;
+  const rc  = { x:  rL.x*half, y:  rL.y*half };       // committee boat (right end, course-up)
+  const pin = { x: -rL.x*half, y: -rL.y*half };       // pin (left end)
+  // layline corners: laylines around the COURSE AXIS (not the wind), intersected with the start line's own line.
+  // These are fixed physical measurement locations — rotating the wind must not move them or the current field.
+  const cross = (a,b) => a.x*b.y - a.y*b.x;
+  const cornerFor = deg => {
+    const w = dirVec(deg);                            // layline direction, pointing down-course from the mark
+    const den = cross(rL, w);
+    let t = Math.abs(den) < 1e-6 ? 0 : cross(M, w) / den;
+    const lim = 4 * p.markDist;                       // keep extreme angles from blowing up the view
+    t = Math.max(-lim, Math.min(lim, t));
+    return { x: rL.x*t, y: rL.y*t };
+  };
+  const cornerR = cornerFor(p.markBrg - p.twa + 180); // starboard-side corner (dashed reference layline endpoint)
+  const cornerL = cornerFor(p.markBrg + p.twa + 180); // port-side corner
+  // left/right current measurement points: halfway up the course, sitting on the laylines
+  const halfUp = p.markDist / 2;
+  const lat = Math.tan(p.twa * D2R) * halfUp;
+  const mid = { x: m.x*halfUp, y: m.y*halfUp };
+  const llR = { x: mid.x + rL.x*lat, y: mid.y + rL.y*lat };
+  const llL = { x: mid.x - rL.x*lat, y: mid.y - rL.y*lat };
+  return { M, rc, pin, cornerL, cornerR,
+           curPts: [ {x:0,y:0}, M, llL, llR ] };
+}
+
+// ---- current field: inverse-distance weighting over MEASURED points only ----
+function makeCurrentField(p, g){
+  const meas = [];
+  p.cur.forEach((c, i) => {
+    if (c.measured) meas.push({ pt: g.curPts[i], v: { x: dirVec(c.d).x*c.s, y: dirVec(c.d).y*c.s } });
+  });
+  if (!meas.length) return () => ({ x: 0, y: 0 });   // no data → still water
+  return (x, y) => {
+    let wx=0, wy=0, wsum=0;
+    for (const m of meas){
+      const dx = x-m.pt.x, dy = y-m.pt.y;
+      const d2 = dx*dx+dy*dy;
+      if (d2 < 1) return m.v;
+      const w = 1/d2;
+      wx += m.v.x*w; wy += m.v.y*w; wsum += w;
+    }
+    return { x: wx/wsum, y: wy/wsum };
+  };
+}
+
+// ---- simulation: one run ----
+// firstTack: +1 = right side (port tack first), -1 = left side (starboard first)
+function simulate(twd, firstTack, p, g, curAt){
+  const dt = 2, maxT = 4*3600, closeR = 18, tackLock = 20;
+  let pos = {x:0, y:0}, tack = firstTack, t = 0, lastTack = -1e9;
+  const path = [{x:0, y:0, t:0}];
+  let step = 0;
+  while (t < maxT){
+    const cur = curAt(pos.x, pos.y);
+    const toM = { x: g.M.x - pos.x, y: g.M.y - pos.y };
+    const dm = Math.hypot(toM.x, toM.y);
+    if (dm < closeR){ path.push({x:pos.x,y:pos.y,t}); return { time: t, path, ok:true }; }
+
+    // --- direct sailing (fetch/reach): if the mark can be reached without beating,
+    // steer a current-compensated heading straight at it. This is how the boat closes
+    // the final metres, recovers a small overstand, and handles marks that a big shift
+    // has turned into a fetch. Solve V_bsp·b + current = k·u (u = unit vector to mark).
+    const u = { x: toM.x/dm, y: toM.y/dm };
+    const cu = cur.x*u.x + cur.y*u.y;
+    const disc = cu*cu - (cur.x*cur.x + cur.y*cur.y) + p.bsp*p.bsp;
+    if (disc > 0){
+      const k = cu + Math.sqrt(disc);            // closing speed over ground along u
+      if (k > 0.05){
+        const bx = (k*u.x - cur.x)/p.bsp, by = (k*u.y - cur.y)/p.bsp;
+        const hdgDirect = brgOf({ x: bx, y: by });
+        if (Math.abs(norm180(hdgDirect - twd)) >= p.twa - 0.5){  // outside the no-go zone
+          if (dm <= k*dt + 1){
+            t += dm / k;
+            path.push({ x: g.M.x, y: g.M.y, t });
+            return { time: t, path, ok: true };
+          }
+          pos = { x: pos.x + u.x*k*dt, y: pos.y + u.y*k*dt };
+          t += dt; step++;
+          if (step % 2 === 0) path.push({x:pos.x, y:pos.y, t});
+          continue;
+        }
+      }
+    }
+
+    // --- beating: tack test — does the opposite tack's course-over-ground already fetch the mark?
+    const h2 = twd - tack * p.twa;
+    const d2 = dirVec(h2);
+    const v2 = { x: d2.x*p.bsp + cur.x, y: d2.y*p.bsp + cur.y };
+    const delta = norm180(brgOf(toM) - brgOf(v2));
+    if (t - lastTack > tackLock && Math.abs(delta) < 90 && tack*delta <= 0){
+      tack = -tack; lastTack = t;
+      continue;
+    }
+    const h = twd + tack * p.twa;
+    const dh = dirVec(h);
+    const v = { x: dh.x*p.bsp + cur.x, y: dh.y*p.bsp + cur.y };
+    pos = { x: pos.x + v.x*dt, y: pos.y + v.y*dt };
+    t += dt; step++;
+    if (step % 2 === 0) path.push({x:pos.x, y:pos.y, t});
+  }
+  return { time: Infinity, path, ok:false };
+}
+
+// ---- main computation ----
+let state = null;
+function compute(){
+  const p = readParams();
+  const g = geometry(p);
+  const curAt = makeCurrentField(p, g);
+  // course-up rotation: mark bearing becomes straight up on screen
+  const b = p.markBrg * D2R, cb = Math.cos(b), sb = Math.sin(b);
+  const rot   = q => ({ x: q.x*cb - q.y*sb, y: q.x*sb + q.y*cb });
+  const unrot = q => ({ x: q.x*cb + q.y*sb, y: -q.x*sb + q.y*cb });
+  const scen = [
+    { name:'Left phase',  twd:p.windMin,  color:getCss('--wind-min')  },
+    { name:'Mean',        twd:p.windMean, color:getCss('--wind-mean') },
+    { name:'Right phase', twd:p.windMax,  color:getCss('--wind-max')  },
+  ];
+  const runs = scen.map(s => ({
+    ...s,
+    left:  simulate(s.twd, -1, p, g, curAt),
+    right: simulate(s.twd, +1, p, g, curAt),
+  }));
+  state = { p, g, curAt, runs, rot, unrot };
+  renderBoatInfo();
+  const nMeas = p.cur.filter(c => c.measured).length;
+  $('curStatus').textContent = nMeas === 0
+    ? 'No current points measured → running with no current.'
+    : `${nMeas} of 4 points measured → field interpolated from those${nMeas < 4 ? '; the rest are ignored.' : '.'}`;
+  $('curStatus').style.color = nMeas === 0 ? 'var(--wind-mean)' : 'var(--teal)';
+  renderResults();
+  stopPlay();
+  draw(Infinity);
+}
+
+function getCss(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+// ---- results table ----
+function renderResults(){
+  const tb = $('resBody'); tb.innerHTML = '';
+  let leftWins = 0, rightWins = 0, meanDelta = NaN;
+  state.runs.forEach((r, i) => {
+    const tl = r.left.time, tr = r.right.time;
+    const d = tr - tl;
+    if (i === 1) meanDelta = d;
+    let winner = '—', diffTxt = '—';
+    if (isFinite(tl) && isFinite(tr)){
+      if (Math.abs(d) < 3){ winner = 'about equal'; diffTxt = '< 3 s'; }
+      else if (d > 0){ winner = 'Left'; leftWins++; diffTxt = Math.round(d) + ' s'; }
+      else { winner = 'Right'; rightWins++; diffTxt = Math.round(-d) + ' s'; }
+    } else if (isFinite(tl)){ winner = 'Left'; leftWins++; }
+    else if (isFinite(tr)){ winner = 'Right'; rightWins++; }
+    const row = document.createElement('tr');
+    row.innerHTML =
+      `<td class="name"><span class="dot" style="background:${r.color}"></span>${r.name} (${((r.twd%360)+360)%360|0}°)</td>` +
+      `<td class="${winner==='Left'?'win':''}">${fmtT(tl)}</td>` +
+      `<td class="${winner==='Right'?'win':''}">${fmtT(tr)}</td>` +
+      `<td>${diffTxt}</td>` +
+      `<td>${winner}</td>`;
+    tb.appendChild(row);
+  });
+  const s = $('summary');
+  const unreachable = state.runs.some(r => !r.left.ok || !r.right.ok);
+  let html = '';
+  if (leftWins > rightWins) html = `Overall: the <strong>left side</strong> is favoured (faster in ${leftWins}/3 scenarios).`;
+  else if (rightWins > leftWins) html = `Overall: the <strong>right side</strong> is favoured (faster in ${rightWins}/3 scenarios).`;
+  else html = `Overall: the two sides are <strong>even</strong> – the call may come down to which phase of the oscillation you start in.`;
+  if (isFinite(meanDelta) && Math.abs(meanDelta) >= 3){
+    html += ` In mean wind the gap is <strong>${Math.abs(Math.round(meanDelta))} s</strong> in favour of the ${meanDelta>0?'left':'right'} side.`;
+  }
+  if (unreachable) html += ` <span class="warn">Note: in at least one run the boat never reached the mark (current too strong or an extreme setting).</span>`;
+  s.innerHTML = html;
+}
+
+// ---- drawing (course-up: everything passes through state.rot) ----
+const canvas = $('chart');
+const ctx = canvas.getContext('2d');
+
+function computeView(){
+  const g = state.g, rot = state.rot;
+  // FIXED frame: derived from the course geometry only (line, mark, layline corners).
+  // Wind changes move the trajectories but never reframe or rescale the chart.
+  const pts = [g.rc, g.pin, g.M, g.cornerL, g.cornerR, {x:0,y:0}].map(rot);
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  pts.forEach(q => { minX=Math.min(minX,q.x); maxX=Math.max(maxX,q.x);
+                     minY=Math.min(minY,q.y); maxY=Math.max(maxY,q.y); });
+  const padW = (maxX-minX)*0.16 + 40, padH = (maxY-minY)*0.10 + 40;
+  minX-=padW; maxX+=padW; minY-=padH; maxY+=padH;
+  const wrap = canvas.parentElement;
+  const cssW = wrap.clientWidth;
+  const worldW = maxX-minX, worldH = maxY-minY;
+  const cssH = Math.min(Math.max(cssW * worldH / worldW, 320), Math.max(window.innerHeight*0.62, 380));
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+  canvas.style.height = cssH+'px';
+  const s = Math.min(cssW/worldW, cssH/worldH);
+  const ox = (cssW - worldW*s)/2, oy = (cssH - worldH*s)/2;
+  const toX = x => (ox + (x-minX)*s)*dpr;
+  const toY = y => (cssH - oy - (y-minY)*s)*dpr;
+  return {
+    toX, toY,
+    // world point (true frame) → screen
+    px: q => { const w = state.rot(q); return { x: toX(w.x), y: toY(w.y) }; },
+    // screen px → world point (true frame)
+    world: (sx, sy) => {
+      const rx = (sx/dpr - ox)/s + minX;
+      const ry = (cssH - oy - sy/dpr)/s + minY;
+      return state.unrot({ x: rx, y: ry });
+    },
+    scale: s*dpr, dpr
+  };
+}
+
+function arrow(x1,y1,x2,y2, w){
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const a = Math.atan2(y2-y1, x2-x1), L = 6*w;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2 - L*Math.cos(a-0.42), y2 - L*Math.sin(a-0.42));
+  ctx.lineTo(x2 - L*Math.cos(a+0.42), y2 - L*Math.sin(a+0.42));
+  ctx.closePath(); ctx.fill();
+}
+
+// rotate a true-frame direction vector into the screen frame (screen y grows downwards)
+function dispVec(d){
+  const r = state.rot(d);
+  return { x: r.x, y: -r.y };
+}
+
+function draw(tShow){
+  if (!state) return;
+  const v = computeView();
+  const { p, g, curAt, runs } = state;
+  const W = canvas.width, H = canvas.height, dpr = v.dpr;
+  ctx.clearRect(0,0,W,H);
+
+  // faint grid
+  ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 1*dpr;
+  const gridStep = niceStep((W/v.scale)/8) * v.scale;
+  for (let x = ((v.toX(0)%gridStep)+gridStep)%gridStep; x < W; x += gridStep){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = ((v.toY(0)%gridStep)+gridStep)%gridStep; y < H; y += gridStep){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // interpolated current field arrows on a sparse grid
+  ctx.strokeStyle = 'rgba(58,125,93,0.35)'; ctx.fillStyle = 'rgba(58,125,93,0.35)';
+  ctx.lineWidth = 1.1*dpr;
+  const nGX = 9, nGY = 9;
+  for (let i=1;i<nGX;i++) for (let j=1;j<nGY;j++){
+    const sx = i/nGX*W, sy = j/nGY*H;
+    const wp = v.world(sx, sy);
+    const c = curAt(wp.x, wp.y);
+    const sp = Math.hypot(c.x, c.y);
+    if (sp < 0.01) continue;
+    const len = (10 + 26*Math.min(sp/(1.5*KN),1)) * dpr;
+    const dv = dispVec({ x: c.x/sp, y: c.y/sp });
+    arrow(sx - dv.x*len/2, sy - dv.y*len/2, sx + dv.x*len/2, sy + dv.y*len/2, dpr);
+  }
+
+  // 4 measurement points: emphasised current arrows (measured) or dimmed markers (not measured)
+  const ptLabels = ['start','mark','left LL','right LL'];
+  g.curPts.forEach((q, i) => {
+    const c = p.cur[i];
+    const s0 = v.px(q);
+    if (c.measured){
+      ctx.strokeStyle = getCss('--teal'); ctx.fillStyle = getCss('--teal'); ctx.lineWidth = 2*dpr;
+      const dv = dispVec(dirVec(c.d));
+      const len = (14 + 30*Math.min(c.s/(1.5*KN),1)) * dpr;
+      if (c.s > 0.005) arrow(s0.x, s0.y, s0.x + dv.x*len, s0.y + dv.y*len, 1.2*dpr);
+      ctx.beginPath(); ctx.arc(s0.x, s0.y, 3*dpr, 0, 7); ctx.fill();
+    } else {
+      // not measured: hollow faded circle, "no data" tag
+      ctx.strokeStyle = 'rgba(92,88,77,0.5)'; ctx.lineWidth = 1.4*dpr;
+      ctx.setLineDash([3*dpr,3*dpr]);
+      ctx.beginPath(); ctx.arc(s0.x, s0.y, 5*dpr, 0, 7); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = `${9*dpr}px 'IBM Plex Mono',monospace`;
+      ctx.fillStyle = 'rgba(92,88,77,0.65)'; ctx.textAlign = 'center';
+      ctx.fillText('no data', s0.x, s0.y + 16*dpr);
+      ctx.fillText(ptLabels[i], s0.x, s0.y - 9*dpr);
+    }
+  });
+
+  // reference laylines (mean wind, no current)
+  ctx.strokeStyle = 'rgba(92,88,77,0.5)'; ctx.lineWidth = 1*dpr;
+  ctx.setLineDash([6*dpr,6*dpr]);
+  [[g.M, g.cornerL], [g.M, g.cornerR]].forEach(([a,b]) => {
+    const A = v.px(a), B = v.px(b);
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // trajectories
+  runs.forEach(r => {
+    [r.left, r.right].forEach(run => {
+      ctx.strokeStyle = r.color; ctx.lineWidth = 2.2*dpr;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      let started = false;
+      for (const q of run.path){
+        if (q.t > tShow) break;
+        const s0 = v.px(q);
+        if (!started){ ctx.moveTo(s0.x, s0.y); started = true; } else ctx.lineTo(s0.x, s0.y);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // moving boat dot during playback
+      if (isFinite(tShow) && tShow < run.time){
+        const q = posAt(run.path, tShow);
+        if (q){
+          const s0 = v.px(q);
+          ctx.fillStyle = r.color;
+          ctx.beginPath(); ctx.arc(s0.x, s0.y, 4.5*dpr, 0, 7); ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 1.5*dpr; ctx.stroke();
+        }
+      }
+    });
+  });
+
+  // start line + mark
+  const RC = v.px(g.rc), PIN = v.px(g.pin);
+  ctx.strokeStyle = getCss('--cyan'); ctx.lineWidth = 2.5*dpr;
+  ctx.beginPath(); ctx.moveTo(PIN.x, PIN.y); ctx.lineTo(RC.x, RC.y); ctx.stroke();
+  drawMarker(v, g.rc, getCss('--cyan'), 'RC boat', dpr, 'rect');
+  drawMarker(v, g.pin, getCss('--cyan'), 'Pin', dpr, 'tri');
+  drawMarker(v, g.M, '#d9822b', 'Mark', dpr, 'circ');
+
+  // wind rose: three wind-direction arrows, top right (rotated into course-up frame)
+  const wr = { x: W - 74*dpr, y: 64*dpr };
+  ctx.font = `${10*dpr}px 'IBM Plex Mono',monospace`;
+  ctx.fillStyle = getCss('--ink-dim');
+  ctx.textAlign = 'center';
+  ctx.fillText('WIND', wr.x, wr.y - 44*dpr);
+  runs.forEach(r => {
+    const dv = dispVec(dirVec(r.twd));
+    ctx.strokeStyle = r.color; ctx.fillStyle = r.color; ctx.lineWidth = 2*dpr;
+    arrow(wr.x + dv.x*34*dpr, wr.y + dv.y*34*dpr, wr.x + dv.x*6*dpr, wr.y + dv.y*6*dpr, 1.3*dpr);
+  });
+
+  // scale bar
+  const stepM = niceStep((W/v.scale)/6);
+  const pxLen = stepM * v.scale;
+  ctx.strokeStyle = getCss('--ink-dim'); ctx.lineWidth = 1.5*dpr;
+  const bx = 16*dpr, by = H - 46*dpr;
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx+pxLen, by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx, by-4*dpr); ctx.lineTo(bx, by+4*dpr); ctx.moveTo(bx+pxLen, by-4*dpr); ctx.lineTo(bx+pxLen, by+4*dpr); ctx.stroke();
+  ctx.fillStyle = getCss('--ink-dim'); ctx.textAlign = 'left';
+  ctx.fillText(stepM + ' m', bx, by - 8*dpr);
+}
+
+function niceStep(raw){
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const r = raw/p;
+  return (r < 1.5 ? 1 : r < 3.5 ? 2 : r < 7.5 ? 5 : 10) * p;
+}
+
+function drawMarker(v, q, color, label, dpr, shape){
+  const s0 = v.px(q);
+  const x = s0.x, y = s0.y;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if (shape === 'circ') ctx.arc(x, y, 6*dpr, 0, 7);
+  else if (shape === 'rect') ctx.rect(x-5*dpr, y-5*dpr, 10*dpr, 10*dpr);
+  else { ctx.moveTo(x, y-6*dpr); ctx.lineTo(x+5.5*dpr, y+4.5*dpr); ctx.lineTo(x-5.5*dpr, y+4.5*dpr); ctx.closePath(); }
+  ctx.fill();
+  ctx.font = `600 ${11*dpr}px 'STIX Two Text',serif`;
+  ctx.fillStyle = '#1c1b18'; ctx.textAlign = 'center';
+  ctx.fillText(label.toUpperCase(), x, y - 10*dpr);
+}
+
+function posAt(path, t){
+  if (!path.length) return null;
+  if (t <= path[0].t) return path[0];
+  for (let i=1;i<path.length;i++){
+    if (path[i].t >= t){
+      const a = path[i-1], b = path[i];
+      const f = (t - a.t) / Math.max(1e-6, b.t - a.t);
+      return { x: a.x + (b.x-a.x)*f, y: a.y + (b.y-a.y)*f };
+    }
+  }
+  return path[path.length-1];
+}
+
+// ---- playback ----
+let playing = false, playT = 0, rafId = null, lastTs = 0;
+const SPEEDUP = 60; // 1 s real time = 60 s simulated
+function stopPlay(){ playing = false; if (rafId) cancelAnimationFrame(rafId); $('playBtn').textContent = 'Play'; $('clock').textContent = '00:00'; }
+$('playBtn').addEventListener('click', () => {
+  if (playing){ stopPlay(); draw(Infinity); return; }
+  playing = true; playT = 0; lastTs = 0;
+  $('playBtn').textContent = 'Stop';
+  const maxT = Math.max(...state.runs.flatMap(r => [r.left.time, r.right.time].filter(isFinite)), 60);
+  const tick = ts => {
+    if (!playing) return;
+    if (lastTs) playT += (ts - lastTs)/1000 * SPEEDUP;
+    lastTs = ts;
+    $('clock').textContent = fmtT(playT);
+    draw(playT);
+    if (playT < maxT + 20) rafId = requestAnimationFrame(tick);
+    else { playing = false; $('playBtn').textContent = 'Play'; draw(Infinity); }
+  };
+  rafId = requestAnimationFrame(tick);
+});
+
+// ---- info modals ----
+function wireModal(btnId, modalId, closeId){
+  const m = $(modalId), b = $(btnId), c = $(closeId);
+  b.addEventListener('click', () => { m.hidden = false; c.focus(); });
+  c.addEventListener('click', () => { m.hidden = true; b.focus(); });
+  m.addEventListener('click', e => { if (e.target === m) m.hidden = true; });
+  return m;
+}
+const modals = [
+  wireModal('modelBtn', 'modelModal', 'modelClose'),
+  wireModal('physBtn', 'physModal', 'physClose'),
+];
+const boatModal = $('boatModal');
+modals.push(boatModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') modals.forEach(m => { if (!m.hidden) m.hidden = true; });
+});
+
+// ---- boat library UI ----
+$('boatSel').addEventListener('change', e => {
+  activeId = e.target.value;
+  persistBoats();
+  compute();
+});
+
+let editingId = null;
+function polarRow(pt){
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td><input type="number" class="p-tws" step="0.5" min="0.5" value="${pt.tws}"></td>` +
+    `<td><input type="number" class="p-twa" step="0.5" min="20" max="80" value="${pt.twa}"></td>` +
+    `<td><input type="number" class="p-bsp" step="0.1" min="0.1" value="${pt.bsp}"></td>` +
+    `<td><button type="button" class="rmrow" aria-label="Remove row">✕</button></td>`;
+  tr.querySelector('.rmrow').addEventListener('click', () => tr.remove());
+  return tr;
+}
+function openEditor(boat){
+  editingId = boat ? boat.id : null;
+  $('boatModalTitle').textContent = boat ? 'Edit boat' : 'New boat';
+  $('boatName').value = boat ? boat.name : '';
+  const rows = $('polarRows');
+  rows.innerHTML = '';
+  (boat ? boat.polar : [{tws:10, twa:42, bsp:5.5}]).forEach(pt => rows.appendChild(polarRow(pt)));
+  boatModal.hidden = false;
+  $('boatName').focus();
+}
+$('boatNew').addEventListener('click', () => openEditor(null));
+$('boatEdit').addEventListener('click', () => openEditor(activeBoat()));
+$('polarAdd').addEventListener('click', () => {
+  const rows = $('polarRows');
+  const last = rows.lastElementChild;
+  const base = last
+    ? { tws: (parseFloat(last.querySelector('.p-tws').value)||10) + 4,
+        twa: parseFloat(last.querySelector('.p-twa').value)||42,
+        bsp: parseFloat(last.querySelector('.p-bsp').value)||5.5 }
+    : { tws:10, twa:42, bsp:5.5 };
+  rows.appendChild(polarRow(base));
+});
+$('boatCancel').addEventListener('click', () => { boatModal.hidden = true; });
+$('boatModalClose').addEventListener('click', () => { boatModal.hidden = true; });
+boatModal.addEventListener('click', e => { if (e.target === boatModal) boatModal.hidden = true; });
+$('boatSave').addEventListener('click', () => {
+  const name = $('boatName').value.trim();
+  if (!name){ $('boatName').focus(); return; }
+  const polar = [...$('polarRows').querySelectorAll('tr')].map(tr => ({
+    tws: parseFloat(tr.querySelector('.p-tws').value),
+    twa: parseFloat(tr.querySelector('.p-twa').value),
+    bsp: parseFloat(tr.querySelector('.p-bsp').value),
+  })).filter(p => isFinite(p.tws) && p.tws > 0 && isFinite(p.twa) && isFinite(p.bsp) && p.bsp > 0)
+     .sort((a,b) => a.tws - b.tws);
+  if (!polar.length) return;
+  if (editingId){
+    const b = boats.find(x => x.id === editingId);
+    if (b){ b.name = name; b.polar = polar; }
+    activeId = editingId;
+  } else {
+    const id = 'b' + Date.now().toString(36);
+    boats.push({ id, name, polar });
+    activeId = id;
+  }
+  persistBoats();
+  renderBoatSelect();
+  boatModal.hidden = true;
+  compute();
+});
+$('boatDel').addEventListener('click', () => {
+  const b = activeBoat();
+  if (!confirm(`Delete boat "${b.name}"?`)) return;
+  boats = boats.filter(x => x.id !== b.id);
+  if (!boats.length) boats = JSON.parse(JSON.stringify(DEFAULT_BOATS));
+  activeId = boats[0].id;
+  persistBoats();
+  renderBoatSelect();
+  compute();
+});
+$('boatExp').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(boats, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'boat-library.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$('boatImpBtn').addEventListener('click', () => $('boatImp').click());
+$('boatImp').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const data = JSON.parse(rd.result);
+      const list = Array.isArray(data) ? data : [data];
+      let imported = 0;
+      list.forEach(b => {
+        if (!b || !b.name || !Array.isArray(b.polar)) return;
+        const polar = b.polar
+          .map(p => ({ tws:+p.tws, twa:+p.twa, bsp:+p.bsp }))
+          .filter(p => isFinite(p.tws) && p.tws > 0 && isFinite(p.twa) && isFinite(p.bsp) && p.bsp > 0)
+          .sort((a,c) => a.tws - c.tws);
+        if (!polar.length) return;
+        const existing = boats.find(x => x.name === b.name);
+        if (existing) existing.polar = polar;
+        else boats.push({ id: 'b' + Date.now().toString(36) + imported, name: b.name, polar });
+        imported++;
+      });
+      if (imported){
+        persistBoats();
+        renderBoatSelect();
+        compute();
+      } else {
+        alert('No valid boats found in the file. Expected format: [{ "name": "...", "polar": [{ "tws": 10, "twa": 42, "bsp": 5.5 }, ...] }, ...]');
+      }
+    } catch(err){
+      alert('Could not read the file as JSON.');
+    }
+    e.target.value = '';
+  };
+  rd.readAsText(file);
+});
+
+// ---- events ----
+let deb = null;
+inputs.forEach(el => el.addEventListener('input', () => {
+  clearTimeout(deb); deb = setTimeout(compute, 200);
+}));
+window.addEventListener('resize', () => { if (state) draw(Infinity); });
+
+$('pmOffset').addEventListener('click', () => setPhaseMode('offset'));
+$('pmTwd').addEventListener('click', () => setPhaseMode('twd'));
+
+function setCurDir(mode){
+  if (mode === curDir) return;
+  // convert the four direction fields so the physical flow stays the same
+  ['c0d','c1d','c2d','c3d'].forEach(id => {
+    const cur = parseFloat($(id).value);
+    if (isFinite(cur)) $(id).value = Math.round(((cur + 180) % 360 + 360) % 360);
+  });
+  curDir = mode;
+  $('curTowards').classList.toggle('active', mode === 'towards');
+  $('curFrom').classList.toggle('active', mode === 'from');
+  $('curTowards').setAttribute('aria-selected', mode === 'towards');
+  $('curFrom').setAttribute('aria-selected', mode === 'from');
+  $('curDirHd').textContent = mode === 'towards' ? 'Set (°, towards)' : 'Dir (°, from)';
+  compute();
+}
+$('curTowards').addEventListener('click', () => setCurDir('towards'));
+$('curFrom').addEventListener('click', () => setCurDir('from'));
+
+renderBoatSelect();
+compute();
+})();
+</script>
+</body>
+</html>
