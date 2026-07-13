@@ -30,11 +30,15 @@ function setPhaseMode(mode){
     }
   };
   cvt('windMin'); cvt('windMax');
+  phaseMode = mode;
+  applyPhaseModeUI(mode);
+  compute();
+}
+function applyPhaseModeUI(mode){
   ['windMin','windMax'].forEach(id => {
     $(id).min = mode === 'twd' ? 0 : -180;
     $(id).max = mode === 'twd' ? 359 : 180;
   });
-  phaseMode = mode;
   $('pmOffset').classList.toggle('active', mode === 'offset');
   $('pmTwd').classList.toggle('active', mode === 'twd');
   $('pmOffset').setAttribute('aria-selected', mode === 'offset');
@@ -44,10 +48,33 @@ function setPhaseMode(mode){
   $('phaseHint').innerHTML = mode === 'offset'
     ? 'Left/right phase given as an offset from the mean (e.g. −12 = 12° left of mean). Switch to <em>Absolute TWD</em> to type the two extreme wind directions directly.'
     : 'Left/right phase given as absolute wind directions (TWD), e.g. 348 and 012. Switch to <em>Offset Δ°</em> to enter them relative to the mean instead.';
-  compute();
 }
-const inputs = ['lineLen','markDist','markBrg','windMean','windMin','windMax','tws',
-                'c0d','c0s','c1d','c1s','c2d','c2s','c3d','c3s'].map($);
+const PARAM_IDS = ['lineLen','markDist','markBrg','windMean','windMin','windMax','tws',
+                   'c0d','c0s','c1d','c1s','c2d','c2s','c3d','c3s'];
+const inputs = PARAM_IDS.map($);
+
+// ---- persist every input between sessions ----
+const LS_PARAMS = 'utsim.params.v1';
+function saveParams(){
+  try {
+    const fields = {};
+    PARAM_IDS.forEach(id => fields[id] = $(id).value);
+    localStorage.setItem(LS_PARAMS, JSON.stringify({ fields, phaseMode, curDir }));
+  } catch(e){}
+}
+function restoreParams(){
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_PARAMS));
+    if (!s || !s.fields) return;
+    PARAM_IDS.forEach(id => { if (id in s.fields) $(id).value = s.fields[id]; });
+    if (s.phaseMode === 'twd' || s.phaseMode === 'offset'){
+      phaseMode = s.phaseMode; applyPhaseModeUI(phaseMode);
+    }
+    if (s.curDir === 'towards' || s.curDir === 'from'){
+      curDir = s.curDir; applyCurDirUI(curDir);
+    }
+  } catch(e){}
+}
 
 // compass bearing fields: wrap out-of-range values back into 0–359 on blur
 // (e.g. 450 → 90, −20 → 340); phase fields wrap to ±180 in offset mode
@@ -321,6 +348,7 @@ function compute(){
   renderResults();
   stopPlay();
   draw(Infinity);
+  saveParams();
 }
 
 function getCss(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -758,16 +786,20 @@ function setCurDir(mode){
     if (isFinite(cur)) $(id).value = Math.round(((cur + 180) % 360 + 360) % 360);
   });
   curDir = mode;
+  applyCurDirUI(mode);
+  compute();
+}
+function applyCurDirUI(mode){
   $('curTowards').classList.toggle('active', mode === 'towards');
   $('curFrom').classList.toggle('active', mode === 'from');
   $('curTowards').setAttribute('aria-selected', mode === 'towards');
   $('curFrom').setAttribute('aria-selected', mode === 'from');
   $('curDirHd').textContent = mode === 'towards' ? 'Set (°, towards)' : 'Dir (°, from)';
-  compute();
 }
 $('curTowards').addEventListener('click', () => setCurDir('towards'));
 $('curFrom').addEventListener('click', () => setCurDir('from'));
 
+restoreParams();
 renderBoatSelect();
 compute();
 })();
