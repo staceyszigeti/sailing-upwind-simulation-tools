@@ -361,7 +361,17 @@ function computeView(){
   const wrap = canvas.parentElement;
   const cssW = wrap.clientWidth;
   const worldW = maxX-minX, worldH = maxY-minY;
-  const cssH = Math.min(Math.max(cssW * worldH / worldW, 320), Math.max(window.innerHeight*0.62, 380));
+  // cap the chart height at the space actually free in the stage column,
+  // so the whole right side fits on one screen without scrolling
+  let capH = Math.max(window.innerHeight*0.62, 380);
+  if (window.matchMedia('(min-width: 901px)').matches){
+    const stageEl = wrap.parentElement;
+    const cs = getComputedStyle(stageEl);
+    let free = stageEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 2;
+    for (const el of stageEl.children) if (el !== wrap) free -= el.offsetHeight + 12;
+    if (free > 200) capH = free;
+  }
+  const cssH = Math.min(Math.max(cssW * worldH / worldW, 260), capH);
   const dpr = window.devicePixelRatio || 1;
   canvas.width = cssW*dpr; canvas.height = cssH*dpr;
   canvas.style.height = cssH+'px';

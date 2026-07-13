@@ -14,11 +14,12 @@
   font-size:15px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
 body{
   background:var(--sea-deep);
   color:var(--ink);
   font-family:'STIX Two Text',Georgia,serif;
-  min-height:100vh;
+  display:flex;flex-direction:column;overflow:hidden;
 }
 header{
   display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
@@ -106,17 +107,19 @@ header .sub{color:var(--ink-dim);font-size:.9rem;font-style:italic}
 }
 .app{
   display:grid;grid-template-columns:330px 1fr;gap:0;
-  min-height:calc(100vh - 62px);
+  flex:1;min-height:0;
 }
-@media(max-width:900px){.app{grid-template-columns:1fr}}
+@media(max-width:900px){
+  body{display:block;height:auto;overflow:auto}
+  .app{grid-template-columns:1fr}
+}
 
 /* ---- controls ---- */
 .controls{
-  border-right:1px solid var(--line);
   padding:16px 18px 40px;
-  overflow-y:auto;max-height:calc(100vh - 62px);
+  overflow-y:auto;min-height:0;
 }
-@media(max-width:900px){.controls{max-height:none;border-right:none;border-bottom:1px solid var(--line)}}
+@media(max-width:900px){.controls{overflow-y:visible;border-bottom:1px solid var(--line)}}
 fieldset{
   border:1px solid var(--line);border-radius:3px;
   padding:12px 12px 10px;margin-bottom:14px;background:var(--sea-panel);
@@ -199,7 +202,8 @@ legend{
 .editor-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 
 /* ---- chart area ---- */
-.stage{display:flex;flex-direction:column;padding:14px 18px 26px;gap:12px}
+.stage{display:flex;flex-direction:column;padding:14px 18px 26px;gap:12px;border-left:1px solid var(--line);overflow-y:auto;min-height:0}
+@media(max-width:900px){.stage{border-left:none;overflow-y:visible}}
 .chartwrap{position:relative;background:var(--sea-chart);border:1px solid var(--line);border-radius:3px;overflow:hidden}
 canvas{display:block;width:100%;height:auto}
 .legend{
