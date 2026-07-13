@@ -24,3 +24,5 @@ enable the hook once with:
 ```
 git config core.hooksPath .githooks
 ```
+
+User-facing changes are tracked in [CHANGELOG.md](CHANGELOG.md).
