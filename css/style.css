@@ -28,7 +28,10 @@ header{
 }
 .hleft{display:flex;flex-direction:column;gap:3px;min-width:0}
 .htitle{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-.hmeta{display:flex;gap:12px;flex-wrap:wrap}
+.hmeta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ghlink{display:inline-flex;align-items:center;gap:4px;color:var(--ink-dim);text-decoration:none}
+.ghlink:hover{color:var(--cyan);text-decoration:underline}
+.ghlink:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 header h1{
   font-family:'STIX Two Text',serif;
   font-weight:700;font-size:1.55rem;letter-spacing:.01em;
