@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Upwind Tactics Simulator</title>
 <meta name="description" content="Simulate upwind sailing tactics: side selection under current and wind oscillation, from start line to windward mark.">
+<meta name="author" content="Stacey Szigeti — Fastrrr">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -13,13 +14,20 @@
 </head>
 <body>
 <header>
-  <h1>Upwind Tactics Simulator</h1>
-  <span class="sub">start → windward mark · side selection under current + wind oscillation</span>
+  <div class="hleft">
+    <div class="htitle">
+      <h1>Upwind Tactics Simulator</h1>
+      <span class="sub">start → windward mark · side selection under current + wind oscillation</span>
+    </div>
+    <div class="hmeta">
+      <span class="ver" id="verTag"></span>
+      <span class="ver">© 2026 Stacey Szigeti · Fastrrr · MIT</span>
+    </div>
+  </div>
   <div class="hbtns">
     <button id="physBtn" class="modelbtn">Model physics</button>
     <button id="modelBtn" class="modelbtn">Model assumptions</button>
   </div>
-  <span class="ver" id="verTag"></span>
 </header>
 
 <div class="modal-backdrop" id="boatModal" hidden>
@@ -169,7 +177,7 @@
       <ul>
         <li><strong>Current as a vector, everywhere on the course.</strong> Ground velocity = boat velocity through the water + local current. Head current slows progress towards the mark, favourable current speeds it up, and cross current pushes the boat sideways.</li>
         <li><strong>Spatially varying current.</strong> The field is interpolated between your 4 measurement points (start, mark, left/right layline) by inverse-distance weighting, so each side of the course can have genuinely different water.</li>
-        <li><strong>Current-corrected laylines.</strong> The boat tacks when the <em>course over ground</em> of the opposite tack fetches the mark — not the geometric layline. The dashed grey lines are shown only as a no-current reference for comparison.</li>
+        <li><strong>Current-corrected laylines.</strong> The boat tacks when the <em>course over ground</em> of the opposite tack fetches the mark — not the geometric layline. The chart draws these corrected laylines as thin blue lines (for the mean wind); the dashed grey lines are shown only as a no-current reference for comparison.</li>
         <li><strong>Wind direction scenarios.</strong> Each run uses a fixed wind direction: left phase, mean, or right phase. Comparing the three shows how sensitive the side choice is to where the wind sits in its oscillation.</li>
         <li><strong>Boat performance from an upwind polar.</strong> The tacking angle and boat speed are read from the selected boat's polar table, linearly interpolated at the entered wind speed. Within a run they are constant.</li>
         <li><strong>Fetch/reach sailing on the final approach.</strong> When the mark no longer requires beating, the boat steers a current-compensated heading straight at it — so it always closes on the mark, recovers small overstands, and effectively tacks exactly on the current-corrected layline.</li>
@@ -274,7 +282,7 @@
         <span class="clock" id="clock">00:00</span>
       </div>
     </div>
-    <p class="figcap"><strong>Figure 1.</strong> Course-up view of the beat. Solid curves: simulated ground tracks for three wind scenarios × two side strategies; dashed lines: no-current reference laylines; green arrows: interpolated current field with the four measurement points.</p>
+    <p class="figcap"><strong>Figure 1.</strong> Course-up view of the beat. Solid curves: simulated ground tracks for three wind scenarios × two side strategies; thin blue lines: current-corrected laylines (mean wind); dashed grey lines: no-current reference laylines; green arrows: interpolated current field with the four measurement points.</p>
 
     <div class="results">
       <h2>Table 1. Elapsed time to the mark</h2>

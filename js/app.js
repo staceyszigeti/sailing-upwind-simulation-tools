@@ -322,6 +322,28 @@ function simulate(twd, firstTack, p, g, curAt){
   return { time: Infinity, path, ok:false };
 }
 
+// ---- current-corrected layline: ground track of the final tack, integrated backwards from the mark ----
+// tackSign: +1 = left-side layline (final heading twd+twa), -1 = right-side (twd-twa)
+function correctedLayline(twd, tackSign, p, g, curAt){
+  const h = dirVec(twd + tackSign * p.twa);
+  const m = dirVec(p.markBrg), rL = { x: m.y, y: -m.x };
+  const lim = 4 * p.markDist;
+  const dt = 4;
+  let pos = { x: g.M.x, y: g.M.y };
+  const pts = [{ ...pos }];
+  for (let i = 0; i < 1500; i++){
+    const c = curAt(pos.x, pos.y);
+    const vx = h.x*p.bsp + c.x, vy = h.y*p.bsp + c.y;
+    if (Math.hypot(vx, vy) < 0.02) break;           // current cancels the boat: no layline beyond here
+    pos = { x: pos.x - vx*dt, y: pos.y - vy*dt };
+    pts.push({ ...pos });
+    const along = pos.x*m.x + pos.y*m.y;
+    const lat   = pos.x*rL.x + pos.y*rL.y;
+    if (along < -0.08*p.markDist || Math.abs(lat) > lim) break;
+  }
+  return pts;
+}
+
 // ---- main computation ----
 let state = null;
 function compute(){
@@ -519,6 +541,33 @@ function draw(tShow){
     ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
   });
   ctx.setLineDash([]);
+
+  // current-corrected laylines (mean wind): the ground track that actually fetches the mark
+  [ +1, -1 ].forEach(side => {
+    const path = correctedLayline(p.windMean, side, p, g, curAt);
+    if (path.length < 2) return;
+    ctx.strokeStyle = getCss('--cyan'); ctx.lineWidth = 1.1*dpr;
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    path.forEach((q, i) => {
+      const s0 = v.px(q);
+      if (i) ctx.lineTo(s0.x, s0.y); else ctx.moveTo(s0.x, s0.y);
+    });
+    ctx.stroke();
+    // discreet label, set along the line
+    const i0 = Math.floor(path.length * 0.55);
+    const A = v.px(path[i0]), B = v.px(path[Math.min(i0+3, path.length-1)]);
+    let ang = Math.atan2(B.y - A.y, B.x - A.x);
+    if (ang > Math.PI/2 || ang < -Math.PI/2) ang += Math.PI;   // keep the text upright
+    ctx.save();
+    ctx.translate((A.x+B.x)/2, (A.y+B.y)/2);
+    ctx.rotate(ang);
+    ctx.font = `${9*dpr}px 'IBM Plex Mono',monospace`;
+    ctx.fillStyle = getCss('--cyan'); ctx.textAlign = 'center';
+    ctx.fillText('current-corrected layline', 0, -5*dpr);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  });
 
   // trajectories
   runs.forEach(r => {
@@ -804,7 +853,7 @@ $('curTowards').addEventListener('click', () => setCurDir('towards'));
 $('curFrom').addEventListener('click', () => setCurDir('from'));
 
 if (window.UTSIM_VERSION){
-  $('verTag').textContent = `v0.${window.UTSIM_VERSION.build} · ${window.UTSIM_VERSION.date}`;
+  $('verTag').textContent = `v1.${window.UTSIM_VERSION.build} · ${window.UTSIM_VERSION.date}`;
 }
 restoreParams();
 renderBoatSelect();

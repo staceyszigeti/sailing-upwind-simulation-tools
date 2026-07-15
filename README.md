@@ -17,7 +17,7 @@ js/version.js   generated build tag (do not edit by hand)
 
 ## Versioning
 
-The version shown in the app header (`v0.<n> · <date>`) is the commit
+The version shown in the app header (`v1.<n> · <date>`) is the commit
 count, written into `js/version.js` by a pre-commit hook. After cloning,
 enable the hook once with:
 
@@ -26,3 +26,8 @@ git config core.hooksPath .githooks
 ```
 
 User-facing changes are tracked in [CHANGELOG.md](CHANGELOG.md).
+
+## Author & license
+
+Created by **Stacey Szigeti** ([Fastrrr](https://fastrrr.com)).
+Released under the [MIT License](LICENSE).

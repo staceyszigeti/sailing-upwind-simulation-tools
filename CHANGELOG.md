@@ -1,7 +1,18 @@
 # Changelog
 
-Version numbers (`v0.<n>`) are the commit count, as shown in the app
+Version numbers (`v1.<n>`) are the commit count, as shown in the app
 header — see the Versioning section of the README.
+
+## v1.12 — 2026-07-15
+
+- The chart now draws the current-corrected laylines (mean wind) as
+  thin blue lines with a discreet label, integrated backwards from
+  the mark through the interpolated current field. The dashed grey
+  lines remain the no-current reference.
+- Author attribution: Stacey Szigeti · Fastrrr in the app header,
+  README and LICENSE.
+- The version tag moved to the top-left, under the title, and now
+  reads `v1.<n>`.
 
 ## v0.11 — 2026-07-13
 
