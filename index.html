@@ -162,7 +162,7 @@
       </figure>
 
       <h3 class="ok">4 · The six runs</h3>
-      <p>Each scenario–side pair is simulated independently: <strong>3 wind directions</strong> (left phase, mean, right phase — each held constant for the whole run) × <strong>2 strategies</strong> (left side = starboard tack first, right side = port tack first). All runs start from the middle of the line. A run ends when the boat is within <strong>18 m</strong> of the mark (the final metres are sailed in fetch mode, homing on the mark); the elapsed times feed the results table.</p>
+      <p>Each scenario–side pair is simulated independently: <strong>3 wind directions</strong> (left phase, mean, right phase — each held constant for the whole run) × <strong>2 strategies</strong> (left side = starboard tack first, right side = port tack first). Each strategy starts from its own end of the line: the left strategy at the pin, the right strategy at the committee boat. A run ends when the boat is within <strong>5 m</strong> of the mark (the final metres are sailed in fetch mode, homing on the mark); the elapsed times feed the results table.</p>
       <p>Two guards keep the integration honest: after a tack the boat must sail at least <strong>20 s</strong> before tacking again (prevents oscillation on the layline), and a run is abandoned after 4 simulated hours (reported as unreachable — typically when the current overpowers the boat). The chart frame and the four current measurement points are fixed to the start→mark course axis, so changing the wind direction moves the trajectories but never the course, the frame, or the current field.</p>
 
     </div>
@@ -185,7 +185,7 @@
         <li><strong>Wind direction scenarios.</strong> Each run uses a fixed wind direction: left phase, mean, or right phase. Comparing the three shows how sensitive the side choice is to where the wind sits in its oscillation.</li>
         <li><strong>Boat performance from an upwind polar.</strong> The tacking angle and boat speed are read from the selected boat's polar table, linearly interpolated at the entered wind speed. Within a run they are constant.</li>
         <li><strong>Fetch/reach sailing on the final approach.</strong> When the mark no longer requires beating, the boat steers a current-compensated heading straight at it — so it always closes on the mark, recovers small overstands, and effectively tacks exactly on the current-corrected layline.</li>
-        <li><strong>Start line geometry.</strong> Line length and its orientation square to the start→mark axis; all runs start from the middle of the line. A line skewed relative to the wind therefore shows up as line bias in the geometry.</li>
+        <li><strong>Start line geometry.</strong> Line length, plus an adjustable line skew: at 0° the line is square to the start→mark axis, and a non-zero skew swings the pin end around the committee boat (positive = pin up-course). The left strategy starts at the pin end, the right strategy at the committee-boat end, so line bias feeds directly into the side comparison.</li>
       </ul>
 
       <h3 class="no">Not accounted for</h3>
@@ -197,7 +197,7 @@
         <li><strong>Wind speed gradient / pressure differences.</strong> More breeze on one side of the course is not modelled.</li>
         <li><strong>Other boats.</strong> No dirty air, no right-of-way situations, no start-line traffic.</li>
         <li><strong>Waves, leeway, sea state.</strong> Leeway is implicitly folded into the tacking angle you enter; waves are ignored.</li>
-        <li><strong>Start position and timing.</strong> Every run starts at the middle of the line at t = 0 — pin-end vs boat-end bias is visible in the geometry but not exploited by the simulated boat.</li>
+        <li><strong>Start position and timing.</strong> Every run starts at t = 0 from its own end of the line (pin / committee boat) — the start spot is fixed, not optimised, so line bias is not exploited beyond what the fixed end positions imply.</li>
         <li><strong>Time-varying current.</strong> The current field is frozen in time (no tidal cycle within a beat).</li>
       </ul>
 
@@ -212,9 +212,10 @@
     <fieldset>
       <legend>Course</legend>
       <div class="row"><label for="lineLen">Start line length (m)</label><input id="lineLen" type="number" value="150" step="10" min="30"></div>
+      <div class="row"><label for="lineSkew">Line skew (°)</label><input id="lineSkew" type="number" value="0" step="1" min="-60" max="60"></div>
       <div class="row"><label for="markDist">Mark distance (m)</label><input id="markDist" type="number" value="1000" step="50" min="200"></div>
       <div class="row"><label for="markBrg">Mark bearing (°)</label><input id="markBrg" type="number" value="0" step="1" min="0" max="359"></div>
-      <p class="hint">Mark bearing is the compass bearing from the middle of the start line. The chart is drawn course-up: the mark is always straight up, with the start line at the bottom. The start line is set square to the start→mark axis, so it stays horizontal on the chart regardless of wind direction.</p>
+      <p class="hint">Mark bearing is the compass bearing from the middle of the (square) start line. The chart is drawn course-up: the mark is always straight up, with the start line at the bottom. The line is square to the start→mark axis at 0° skew; a non-zero skew swings the pin end around the committee boat — viewed from the boat end, positive skew lifts the pin up-course, negative lets the line hang down-course. Wind direction never moves the line.</p>
     </fieldset>
 
     <fieldset>

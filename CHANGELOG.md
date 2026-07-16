@@ -3,6 +3,31 @@
 Version numbers (`v1.<n>`) are the commit count, as shown in the app
 header — see the Versioning section of the README.
 
+## v1.16 — 2026-07-17
+
+- The two side strategies no longer start from the same spot: the
+  left strategy starts at the pin end of the start line, the right
+  strategy at the committee-boat end.
+- New "Line skew" input: the pin end swings around the committee
+  boat relative to the square line (positive = pin up-course,
+  negative = line hanging down-course), so pin/boat-end line bias
+  can be set up and feeds the side comparison.
+- A run now ends when the boat is within 5 m of the mark (was 18 m).
+- Fixed a bug where, after reaching the corrected layline in fetch
+  mode, the boat could briefly resume beating on the stale tack and
+  sail away from the mark in a sawtooth pattern (most visible on the
+  left side with a cross current). The tack now follows the
+  compensated heading while in fetch mode.
+
+## v1.15 — 2026-07-16
+
+- Cloudflare Workers deploy configuration (`wrangler.jsonc`), merged
+  from the Cloudflare autoconfig pull request.
+
+## v1.14 — 2026-07-15
+
+- GitHub repository link (with logo) in the header meta line.
+
 ## v1.12 — 2026-07-15
 
 - The chart now draws the current-corrected laylines (mean wind) as

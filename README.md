@@ -2,7 +2,7 @@
 
 A single-page web app for one race-day question: **which side of the upwind beat pays?**
 
-Set up the course (start line, windward mark), the wind (mean direction, oscillation phases, speed), up to four current measurements and a boat polar. The app simulates the boat to the mark going left and going right under three wind scenarios and compares the elapsed times. The chart shows the simulated ground tracks, the interpolated current field and the current-corrected laylines. Plain HTML/CSS/JS on a canvas — no build step, no dependencies, everything runs in the browser.
+Set up the course (start line length and skew, windward mark), the wind (mean direction, oscillation phases, speed), up to four current measurements and a boat polar. The app simulates the boat to the mark going left (starting at the pin end) and going right (starting at the committee-boat end) under three wind scenarios and compares the elapsed times. The chart shows the simulated ground tracks, the interpolated current field and the current-corrected laylines. Plain HTML/CSS/JS on a canvas — no build step, no dependencies, everything runs in the browser.
 
 ## Usage
 

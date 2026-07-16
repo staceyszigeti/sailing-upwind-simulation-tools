@@ -49,7 +49,7 @@ function applyPhaseModeUI(mode){
     ? 'Left/right phase given as an offset from the mean (e.g. −12 = 12° left of mean). Switch to <em>Absolute TWD</em> to type the two extreme wind directions directly.'
     : 'Left/right phase given as absolute wind directions (TWD), e.g. 348 and 012. Switch to <em>Offset Δ°</em> to enter them relative to the mean instead.';
 }
-const PARAM_IDS = ['lineLen','markDist','markBrg','windMean','windMin','windMax','tws',
+const PARAM_IDS = ['lineLen','lineSkew','markDist','markBrg','windMean','windMin','windMax','tws',
                    'c0d','c0s','c1d','c1s','c2d','c2s','c3d','c3s'];
 const inputs = PARAM_IDS.map($);
 
@@ -195,6 +195,7 @@ function readParams(){
   const phase = x => phaseMode === 'offset' ? mean + x : x;
   return {
     lineLen: Math.max(10, v('lineLen')),
+    lineSkew: Math.max(-60, Math.min(60, v('lineSkew'))),
     markDist: Math.max(100, v('markDist')),
     markBrg: v('markBrg'),
     windMean: mean,
@@ -220,7 +221,12 @@ function geometry(p){
   const rL = { x: m.y, y: -m.x };                     // along the start line, to the right of the course axis
   const half = p.lineLen/2;
   const rc  = { x:  rL.x*half, y:  rL.y*half };       // committee boat (right end, course-up)
-  const pin = { x: -rL.x*half, y: -rL.y*half };       // pin (left end)
+  // pin (left end): swings around the committee boat by the line skew —
+  // 0° = square to the course axis, positive = pin up-course, negative = hanging down-course
+  const sk = (p.lineSkew || 0) * D2R;
+  const pd = { x: -rL.x*Math.cos(sk) + m.x*Math.sin(sk),
+               y: -rL.y*Math.cos(sk) + m.y*Math.sin(sk) };
+  const pin = { x: rc.x + pd.x*p.lineLen, y: rc.y + pd.y*p.lineLen };
   // layline corners: laylines around the COURSE AXIS (not the wind), intersected with the start line's own line.
   // These are fixed physical measurement locations — rotating the wind must not move them or the current field.
   const cross = (a,b) => a.x*b.y - a.y*b.x;
@@ -240,7 +246,10 @@ function geometry(p){
   const mid = { x: m.x*halfUp, y: m.y*halfUp };
   const llR = { x: mid.x + rL.x*lat, y: mid.y + rL.y*lat };
   const llL = { x: mid.x - rL.x*lat, y: mid.y - rL.y*lat };
-  return { M, rc, pin, cornerL, cornerR,
+  // start positions per strategy: the two ends of the line
+  const startR = rc;   // committee-boat end
+  const startL = pin;  // pin end
+  return { M, rc, pin, cornerL, cornerR, startL, startR,
            curPts: [ {x:0,y:0}, M, llL, llR ] };
 }
 
@@ -267,9 +276,11 @@ function makeCurrentField(p, g){
 // ---- simulation: one run ----
 // firstTack: +1 = right side (port tack first), -1 = left side (starboard first)
 function simulate(twd, firstTack, p, g, curAt){
-  const dt = 2, maxT = 4*3600, closeR = 18, tackLock = 20;
-  let pos = {x:0, y:0}, tack = firstTack, t = 0, lastTack = -1e9;
-  const path = [{x:0, y:0, t:0}];
+  const dt = 2, maxT = 4*3600, closeR = 5, tackLock = 20;
+  // each strategy starts from its own end of the start line
+  const s0 = firstTack > 0 ? g.startR : g.startL;
+  let pos = {x: s0.x, y: s0.y}, tack = firstTack, t = 0, lastTack = -1e9;
+  const path = [{x: s0.x, y: s0.y, t:0}];
   let step = 0;
   while (t < maxT){
     const cur = curAt(pos.x, pos.y);
@@ -290,6 +301,11 @@ function simulate(twd, firstTack, p, g, curAt){
         const bx = (k*u.x - cur.x)/p.bsp, by = (k*u.y - cur.y)/p.bsp;
         const hdgDirect = brgOf({ x: bx, y: by });
         if (Math.abs(norm180(hdgDirect - twd)) >= p.twa - 0.5){  // outside the no-go zone
+          // keep the tack in sync with the compensated heading: if fetch mode
+          // later drops out (current turns the direct heading into the no-go
+          // zone), the boat must resume beating on this side, not the stale one
+          const fetchTack = norm180(hdgDirect - twd) > 0 ? 1 : -1;
+          if (fetchTack !== tack){ tack = fetchTack; lastTack = t; }
           if (dm <= k*dt + 1){
             t += dm / k;
             path.push({ x: g.M.x, y: g.M.y, t });
