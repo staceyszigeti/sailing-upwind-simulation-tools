@@ -15,7 +15,7 @@ const $ = id => document.getElementById(id);
 // phase input mode: 'offset' (Δ° from mean) or 'twd' (absolute bearing)
 let phaseMode = 'offset';
 // current direction convention: 'towards' (set) or 'from'
-let curDir = 'towards';
+let curDir = 'from';
 function norm360(a){ return ((a % 360) + 360) % 360; }
 function setPhaseMode(mode){
   if (mode === phaseMode) return;
@@ -132,7 +132,8 @@ try {
 } catch(e){}
 let activeId = null;
 try { activeId = localStorage.getItem(LS_ACTIVE); } catch(e){}
-if (!boats.some(b => b.id === activeId)) activeId = boats[0].id;
+if (!boats.some(b => b.id === activeId))
+  activeId = (boats.find(b => b.id === 'ilca6') || boats[0]).id;
 function persistBoats(){
   try {
     localStorage.setItem(LS_BOATS, JSON.stringify(boats));
@@ -497,12 +498,52 @@ function dispVec(d){
   return { x: r.x, y: -r.y };
 }
 
+// Turbo colormap (Google), polynomial approximation; t in [0,1] → [r,g,b]
+function turbo(t){
+  const r = 34.61 + t*(1172.33 + t*(-10793.56 + t*(33300.12 + t*(-38394.49 + t*14825.05))));
+  const g = 23.31 + t*(557.33  + t*(1225.33  + t*(-3574.96 + t*(1073.77  + t*707.56))));
+  const b = 27.2  + t*(3211.1  + t*(-15327.97+ t*(27814.0  + t*(-22569.18 + t*6838.66))));
+  const c = x => Math.max(0, Math.min(255, Math.round(x)));
+  return [c(r), c(g), c(b)];
+}
+
+// area shading of current speed: a coarse offscreen raster scaled up with
+// smoothing. Cached per computed state + canvas size so playback frames reuse it.
+let curShade = null;
+function currentShading(v, W, H){
+  if (curShade && curShade.state === state && curShade.W === W && curShade.H === H) return curShade.cv;
+  const nSX = 72, nSY = Math.max(8, Math.round(nSX * H / W));
+  const cv = document.createElement('canvas');
+  cv.width = nSX; cv.height = nSY;
+  const c2 = cv.getContext('2d');
+  const img = c2.createImageData(nSX, nSY);
+  for (let j = 0; j < nSY; j++) for (let i = 0; i < nSX; i++){
+    const wp = v.world((i+0.5)/nSX*W, (j+0.5)/nSY*H);
+    const c = state.curAt(wp.x, wp.y);
+    const sp = Math.hypot(c.x, c.y);
+    const k = (j*nSX + i) * 4;
+    // rainbow (Turbo) ramp, saturating at 1 kn: blue = weak → green/yellow → red = strong.
+    // Still water stays paper-white (fully transparent).
+    const t = Math.min(sp/KN, 1);
+    const rgb = turbo(t);
+    img.data[k] = rgb[0]; img.data[k+1] = rgb[1]; img.data[k+2] = rgb[2];
+    img.data[k+3] = sp < 0.005 ? 0 : Math.round(255 * (0.20 + 0.30*t));
+  }
+  c2.putImageData(img, 0, 0);
+  curShade = { state, W, H, cv };
+  return cv;
+}
+
 function draw(tShow){
   if (!state) return;
   const v = computeView();
   const { p, g, curAt, runs } = state;
   const W = canvas.width, H = canvas.height, dpr = v.dpr;
   ctx.clearRect(0,0,W,H);
+
+  // current-speed shading under everything else (darker teal = stronger current)
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(currentShading(v, W, H), 0, 0, W, H);
 
   // faint grid
   ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 1*dpr;
@@ -512,17 +553,18 @@ function draw(tShow){
 
   // interpolated current field arrows on a sparse grid
   ctx.strokeStyle = 'rgba(58,125,93,0.35)'; ctx.fillStyle = 'rgba(58,125,93,0.35)';
-  ctx.lineWidth = 1.1*dpr;
-  const nGX = 9, nGY = 9;
-  for (let i=1;i<nGX;i++) for (let j=1;j<nGY;j++){
-    const sx = i/nGX*W, sy = j/nGY*H;
+  ctx.lineWidth = 1.6*dpr;
+  // half-cell offset grid covering the whole frame, edge to edge
+  const nGX = 11, nGY = 11;
+  for (let i=0;i<nGX;i++) for (let j=0;j<nGY;j++){
+    const sx = (i+0.5)/nGX*W, sy = (j+0.5)/nGY*H;
     const wp = v.world(sx, sy);
     const c = curAt(wp.x, wp.y);
     const sp = Math.hypot(c.x, c.y);
     if (sp < 0.01) continue;
     const len = (10 + 26*Math.min(sp/(1.5*KN),1)) * dpr;
     const dv = dispVec({ x: c.x/sp, y: c.y/sp });
-    arrow(sx - dv.x*len/2, sy - dv.y*len/2, sx + dv.x*len/2, sy + dv.y*len/2, dpr);
+    arrow(sx - dv.x*len/2, sy - dv.y*len/2, sx + dv.x*len/2, sy + dv.y*len/2, 1.3*dpr);
   }
 
   // 4 measurement points: emphasised current arrows (measured) or dimmed markers (not measured)
@@ -555,6 +597,16 @@ function draw(tShow){
   [[g.M, g.cornerL], [g.M, g.cornerR]].forEach(([a,b]) => {
     const A = v.px(a), B = v.px(b);
     ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+    // label, set along the line like the corrected layline's, 3/4 down from the mark
+    let ang = Math.atan2(B.y - A.y, B.x - A.x);
+    if (ang > Math.PI/2 || ang < -Math.PI/2) ang += Math.PI;
+    ctx.save();
+    ctx.translate(A.x + (B.x-A.x)*0.75, A.y + (B.y-A.y)*0.75);
+    ctx.rotate(ang);
+    ctx.font = `${9*dpr}px 'IBM Plex Mono',monospace`;
+    ctx.fillStyle = 'rgba(92,88,77,0.8)'; ctx.textAlign = 'center';
+    ctx.fillText('no-current layline', 0, -5*dpr);
+    ctx.restore();
   });
   ctx.setLineDash([]);
 
@@ -570,8 +622,8 @@ function draw(tShow){
       if (i) ctx.lineTo(s0.x, s0.y); else ctx.moveTo(s0.x, s0.y);
     });
     ctx.stroke();
-    // discreet label, set along the line
-    const i0 = Math.floor(path.length * 0.55);
+    // discreet label, set along the line, 3/4 of the way down from the mark
+    const i0 = Math.floor(path.length * 0.75);
     const A = v.px(path[i0]), B = v.px(path[Math.min(i0+3, path.length-1)]);
     let ang = Math.atan2(B.y - A.y, B.x - A.x);
     if (ang > Math.PI/2 || ang < -Math.PI/2) ang += Math.PI;   // keep the text upright
@@ -616,8 +668,8 @@ function draw(tShow){
   const RC = v.px(g.rc), PIN = v.px(g.pin);
   ctx.strokeStyle = getCss('--cyan'); ctx.lineWidth = 2.5*dpr;
   ctx.beginPath(); ctx.moveTo(PIN.x, PIN.y); ctx.lineTo(RC.x, RC.y); ctx.stroke();
-  drawMarker(v, g.rc, getCss('--cyan'), 'RC boat', dpr, 'rect');
-  drawMarker(v, g.pin, getCss('--cyan'), 'Pin', dpr, 'tri');
+  drawMarker(v, g.rc, getCss('--cyan'), 'RC boat', dpr, 'rect', true);
+  drawMarker(v, g.pin, getCss('--cyan'), 'Pin', dpr, 'tri', true);
   drawMarker(v, g.M, '#d9822b', 'Mark', dpr, 'circ');
 
   // wind rose: three wind-direction arrows, top right (rotated into course-up frame)
@@ -649,7 +701,7 @@ function niceStep(raw){
   return (r < 1.5 ? 1 : r < 3.5 ? 2 : r < 7.5 ? 5 : 10) * p;
 }
 
-function drawMarker(v, q, color, label, dpr, shape){
+function drawMarker(v, q, color, label, dpr, shape, labelBelow){
   const s0 = v.px(q);
   const x = s0.x, y = s0.y;
   ctx.fillStyle = color;
@@ -660,7 +712,7 @@ function drawMarker(v, q, color, label, dpr, shape){
   ctx.fill();
   ctx.font = `600 ${11*dpr}px 'STIX Two Text',serif`;
   ctx.fillStyle = '#1c1b18'; ctx.textAlign = 'center';
-  ctx.fillText(label.toUpperCase(), x, y - 10*dpr);
+  ctx.fillText(label.toUpperCase(), x, labelBelow ? y + 18*dpr : y - 10*dpr);
 }
 
 function posAt(path, t){
@@ -828,6 +880,72 @@ $('boatImp').addEventListener('change', e => {
         compute();
       } else {
         alert('No valid boats found in the file. Expected format: [{ "name": "...", "polar": [{ "tws": 10, "twa": 42, "bsp": 5.5 }, ...] }, ...]');
+      }
+    } catch(err){
+      alert('Could not read the file as JSON.');
+    }
+    e.target.value = '';
+  };
+  rd.readAsText(file);
+});
+
+// ---- case export/import: share a full scenario (all inputs + active boat) as JSON ----
+const CASE_FORMAT = 'utsim.case';
+$('caseExp').addEventListener('click', () => {
+  const fields = {};
+  PARAM_IDS.forEach(id => fields[id] = $(id).value);
+  const b = activeBoat();
+  const data = {
+    format: CASE_FORMAT,
+    version: 1,
+    exported: new Date().toISOString(),
+    fields, phaseMode, curDir,
+    boat: { name: b.name, polar: b.polar },
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `upwind-case-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$('caseImpBtn').addEventListener('click', () => $('caseImp').click());
+$('caseImp').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const data = JSON.parse(rd.result);
+      if (!data || data.format !== CASE_FORMAT || !data.fields){
+        alert('Not a valid case file. Expected a JSON exported with the "Export case" button.');
+      } else {
+        // restore the boat first so compute() below already uses its polar
+        if (data.boat && data.boat.name && Array.isArray(data.boat.polar)){
+          const polar = data.boat.polar
+            .map(p => ({ tws:+p.tws, twa:+p.twa, bsp:+p.bsp }))
+            .filter(p => isFinite(p.tws) && p.tws > 0 && isFinite(p.twa) && isFinite(p.bsp) && p.bsp > 0)
+            .sort((a,c) => a.tws - c.tws);
+          if (polar.length){
+            const existing = boats.find(x => x.name === data.boat.name);
+            if (existing){ existing.polar = polar; activeId = existing.id; }
+            else {
+              const id = 'b' + Date.now().toString(36);
+              boats.push({ id, name: data.boat.name, polar });
+              activeId = id;
+            }
+            persistBoats();
+            renderBoatSelect();
+          }
+        }
+        if (data.phaseMode === 'twd' || data.phaseMode === 'offset'){
+          phaseMode = data.phaseMode; applyPhaseModeUI(phaseMode);
+        }
+        if (data.curDir === 'towards' || data.curDir === 'from'){
+          curDir = data.curDir; applyCurDirUI(curDir);
+        }
+        PARAM_IDS.forEach(id => { if (id in data.fields) $(id).value = data.fields[id]; });
+        compute();
       }
     } catch(err){
       alert('Could not read the file as JSON.');

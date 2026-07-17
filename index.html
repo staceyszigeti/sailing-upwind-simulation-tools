@@ -6,6 +6,20 @@
 <title>Upwind Tactics Simulator</title>
 <meta name="description" content="Simulate upwind sailing tactics: side selection under current and wind oscillation, from start line to windward mark.">
 <meta name="author" content="Stacey Szigeti — Fastrrr">
+<!-- Google tag (gtag.js) — loaded only after cookie consent, see the banner at the end of <body> -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  function loadGA(){
+    if (document.getElementById('gaTag')) return;
+    var s = document.createElement('script');
+    s.async = true; s.id = 'gaTag';
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-G51VTF6CNS';
+    document.head.appendChild(s);
+    gtag('js', new Date());
+    gtag('config', 'G-G51VTF6CNS');
+  }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -31,6 +45,14 @@
   <div class="hbtns">
     <button id="physBtn" class="modelbtn">Model physics</button>
     <button id="modelBtn" class="modelbtn">Model assumptions</button>
+    <span class="hsep" aria-hidden="true"></span>
+    <button id="caseExp" class="modelbtn">Export case</button>
+    <button id="caseImpBtn" class="modelbtn">Import case</button>
+    <input id="caseImp" type="file" accept=".json,application/json" hidden>
+    <span class="hsep" aria-hidden="true"></span>
+    <a class="bmcbtn" href="https://buymeacoffee.com/practical_sailing" target="_blank" rel="noopener" aria-label="Buy me a coffee">
+      <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee">
+    </a>
   </div>
 </header>
 
@@ -211,7 +233,7 @@
 
     <fieldset>
       <legend>Course</legend>
-      <div class="row"><label for="lineLen">Start line length (m)</label><input id="lineLen" type="number" value="150" step="10" min="30"></div>
+      <div class="row"><label for="lineLen">Start line length (m)</label><input id="lineLen" type="number" value="100" step="10" min="30"></div>
       <div class="row"><label for="lineSkew">Line skew (°)</label><input id="lineSkew" type="number" value="0" step="1" min="-60" max="60"></div>
       <div class="row"><label for="markDist">Mark distance (m)</label><input id="markDist" type="number" value="1000" step="50" min="200"></div>
       <div class="row"><label for="markBrg">Mark bearing (°)</label><input id="markBrg" type="number" value="0" step="1" min="0" max="359"></div>
@@ -228,8 +250,8 @@
           <button type="button" class="seg-btn" id="pmTwd" role="tab" aria-selected="false">Absolute TWD</button>
         </div>
       </div>
-      <div class="row"><label for="windMin" id="lblMin">Left phase (Δ°)</label><input id="windMin" type="number" value="-12" step="1" min="-180" max="180"></div>
-      <div class="row"><label for="windMax" id="lblMax">Right phase (Δ°)</label><input id="windMax" type="number" value="12" step="1" min="-180" max="180"></div>
+      <div class="row"><label for="windMin" id="lblMin">Left phase (Δ°)</label><input id="windMin" type="number" value="-10" step="1" min="-180" max="180"></div>
+      <div class="row"><label for="windMax" id="lblMax">Right phase (Δ°)</label><input id="windMax" type="number" value="5" step="1" min="-180" max="180"></div>
       <div class="row"><label for="tws">Wind speed (kn)</label><input id="tws" type="number" value="10" step="0.5" min="1"></div>
       <p class="hint" id="phaseHint">Left/right phase given as an offset from the mean (e.g. −12 = 12° left of mean). Switch to <em>Absolute TWD</em> to type the two extreme wind directions directly.</p>
     </fieldset>
@@ -256,16 +278,16 @@
       <div class="phasemode">
         <span class="pm-label">Direction convention</span>
         <div class="seg" role="tablist" aria-label="Current direction convention">
-          <button type="button" class="seg-btn active" id="curTowards" role="tab" aria-selected="true">Towards</button>
-          <button type="button" class="seg-btn" id="curFrom" role="tab" aria-selected="false">From</button>
+          <button type="button" class="seg-btn" id="curTowards" role="tab" aria-selected="false">Towards</button>
+          <button type="button" class="seg-btn active" id="curFrom" role="tab" aria-selected="true">From</button>
         </div>
       </div>
       <div class="cur-grid">
-        <span class="hd"></span><span class="hd" id="curDirHd">Set (°, towards)</span><span class="hd">Rate (m/min)</span>
-        <span class="pt">Start</span><input id="c0d" type="number" value="90" step="5"><input id="c0s" type="number" value="12" step="1" min="0">
-        <span class="pt">Mark</span><input id="c1d" type="number" value="110" step="5"><input id="c1s" type="number" value="18" step="1" min="0">
-        <span class="pt">Left layline</span><input id="c2d" type="number" value="80" step="5"><input id="c2s" type="number" value="9" step="1" min="0">
-        <span class="pt">Right layline</span><input id="c3d" type="number" value="120" step="5"><input id="c3s" type="number" value="15" step="1" min="0">
+        <span class="hd"></span><span class="hd" id="curDirHd">Dir (°, from)</span><span class="hd">Rate (m/min)</span>
+        <span class="pt">Start</span><input id="c0d" type="number" value="256" step="5"><input id="c0s" type="number" value="38" step="1" min="0">
+        <span class="pt">Mark</span><input id="c1d" type="number" value="260" step="5"><input id="c1s" type="number" value="18" step="1" min="0">
+        <span class="pt">Left layline</span><input id="c2d" type="number" value="259" step="5"><input id="c2s" type="number" value="25" step="1" min="0">
+        <span class="pt">Right layline</span><input id="c3d" type="number" value="264" step="5"><input id="c3s" type="number" value="15" step="1" min="0">
       </div>
       <div id="curStatus" class="boatinfo"></div>
       <p class="hint">Direction is either where the water flows <em>towards</em> (set) or where it comes <em>from</em> — pick the convention above. Rate is in metres per minute. Leave a point's rate blank if you didn't measure there — it is then excluded from the interpolation (not treated as zero). The field is built from the measured points only, by inverse-distance weighting (IDW). With no measured points the simulation runs with no current. The left/right points sit halfway between the start and the mark, on the laylines, fixed to the course axis — changing the wind never moves your measurement locations.</p>
@@ -287,7 +309,7 @@
         <span class="clock" id="clock">00:00</span>
       </div>
     </div>
-    <p class="figcap"><strong>Figure 1.</strong> Course-up view of the beat. Solid curves: simulated ground tracks for three wind scenarios × two side strategies; thin blue lines: current-corrected laylines (mean wind); dashed grey lines: no-current reference laylines; green arrows: interpolated current field with the four measurement points.</p>
+    <p class="figcap"><strong>Figure 1.</strong> Course-up view of the beat. Solid curves: simulated ground tracks for three wind scenarios × two side strategies; thin blue lines: current-corrected laylines (mean wind); dashed grey lines: no-current reference laylines; green arrows: interpolated current field with the four measurement points; colour shading: current speed (blue = weak, green/yellow = moderate, red = strong; white = still water).</p>
 
     <div class="results">
       <h2>Table 1. Elapsed time to the mark</h2>
@@ -299,5 +321,43 @@
     </div>
   </div>
 </div>
+
+<div class="modal-backdrop" id="cookieBar" hidden>
+  <div class="modal cookie-modal" role="dialog" aria-modal="true" aria-labelledby="cookieTitle">
+    <div class="modal-head">
+      <h2 id="cookieTitle">Cookies &amp; analytics</h2>
+    </div>
+    <div class="modal-body">
+      <p>This site would like to use <strong>Google Analytics</strong> cookies to count
+        visits and see which features get used — no ads, no cross-site tracking on our
+        part. Nothing is loaded until you allow it. See
+        <a href="https://policies.google.com/technologies/cookies" target="_blank" rel="noopener">Google's cookie policy</a>.</p>
+      <p>Your choice is remembered in this browser either way.</p>
+      <div class="editor-actions">
+        <button type="button" class="sbtn" id="cookieNo">Decline</button>
+        <button type="button" class="pbtn" id="cookieYes">Allow analytics</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var KEY = 'utsim.consent.v1';
+  var v = null;
+  try { v = localStorage.getItem(KEY); } catch(e){}
+  if (v === 'granted'){ loadGA(); return; }
+  if (v === 'denied') return;
+  var bar = document.getElementById('cookieBar');
+  bar.hidden = false;
+  document.getElementById('cookieYes').focus();
+  function choose(val){
+    try { localStorage.setItem(KEY, val); } catch(e){}
+    bar.hidden = true;
+    if (val === 'granted') loadGA();
+  }
+  document.getElementById('cookieYes').addEventListener('click', function(){ choose('granted'); });
+  document.getElementById('cookieNo').addEventListener('click', function(){ choose('denied'); });
+})();
+</script>
 </body>
 </html>

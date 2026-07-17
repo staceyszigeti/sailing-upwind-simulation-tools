@@ -3,6 +3,37 @@
 Version numbers (`v1.<n>`) are the commit count, as shown in the app
 header — see the Versioning section of the README.
 
+## v1.17 — 2026-07-18
+
+- New "Export case" / "Import case" buttons in the header: the full
+  scenario — every input field, the phase-input and current-direction
+  conventions, and the active boat with its polar — can be saved to a
+  JSON file and loaded back, so cases can be shared with others.
+  Importing also adds the shared boat to the local library (matching
+  by name) and selects it.
+- New default scenario for first-time visitors: 100 m line, −10°/+5°
+  phases, a ~west-setting current field (given in the "from"
+  convention, now the default) and ILCA 6 as the default boat.
+- The interpolated current-field arrows now cover the whole chart
+  frame edge to edge (denser 11×11 grid), instead of stopping short
+  of the border and the measurement points.
+- Official "Buy me a coffee" button in the header button row (image
+  served from the BMC CDN).
+- Google Analytics (gtag.js) page tracking, gated behind a centred
+  cookie-consent dialog on first visit: the GA script is only loaded
+  after "Allow analytics", and the choice (either way) is remembered
+  in localStorage.
+- Current speed is also visualised as a smooth area shading across
+  the chart, using the Turbo rainbow colormap (blue = weak,
+  green/yellow = moderate, red = strong, saturating at 1 kn; still
+  water stays white), interpolated from the same field as the arrows.
+- Chart readability tweaks: the dashed no-current reference laylines
+  are now labelled like the corrected ones, both layline labels sit
+  3/4 of the way down from the mark, the Pin / RC boat labels moved
+  below their markers, and the current-field arrows are slightly
+  thicker. A thin separator groups the header buttons, and the
+  left-panel hint paragraphs are justified.
+
 ## v1.16 — 2026-07-17
 
 - The two side strategies no longer start from the same spot: the

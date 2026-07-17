@@ -37,7 +37,14 @@ header h1{
   font-weight:700;font-size:1.55rem;letter-spacing:.01em;
 }
 header .sub{color:var(--ink-dim);font-size:.9rem;font-style:italic}
-.hbtns{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hbtns{margin-left:auto;display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.hsep{width:1px;background:var(--line);margin:2px 4px}
+.bmcbtn{display:flex;align-items:center}
+.bmcbtn img{height:30px;display:block}
+.bmcbtn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+.cookie-modal{max-width:440px}
+.cookie-modal a{color:var(--cyan)}
 .modelbtn{
   background:transparent;border:1px solid var(--cyan);border-radius:2px;
   color:var(--cyan);font-family:'STIX Two Text',serif;font-weight:600;
@@ -153,7 +160,7 @@ legend{
   padding:4px 6px;width:100%;
 }
 .cur-grid input:focus{outline:2px solid var(--cyan);outline-offset:1px}
-.hint{font-size:.7rem;color:var(--ink-dim);margin-top:6px;line-height:1.35}
+.hint{font-size:.7rem;color:var(--ink-dim);margin-top:6px;line-height:1.35;text-align:justify;hyphens:auto}
 .phasemode{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 8px}
 .pm-label{font-size:.8rem;color:var(--ink-dim)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:2px;overflow:hidden}
