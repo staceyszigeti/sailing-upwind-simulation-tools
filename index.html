@@ -6,19 +6,20 @@
 <title>Upwind Tactics Simulator</title>
 <meta name="description" content="Simulate upwind sailing tactics: side selection under current and wind oscillation, from start line to windward mark.">
 <meta name="author" content="Stacey Szigeti — Fastrrr">
-<!-- Google tag (gtag.js) — loaded only after cookie consent, see the banner at the end of <body> -->
+<!-- Google tag (gtag.js) with Consent Mode v2: analytics consent defaults to
+     denied (no cookies) and is only granted via the dialog at the end of <body> -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-G51VTF6CNS"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-  function loadGA(){
-    if (document.getElementById('gaTag')) return;
-    var s = document.createElement('script');
-    s.async = true; s.id = 'gaTag';
-    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-G51VTF6CNS';
-    document.head.appendChild(s);
-    gtag('js', new Date());
-    gtag('config', 'G-G51VTF6CNS');
-  }
+  gtag('consent', 'default', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: 'denied'
+  });
+  gtag('js', new Date());
+  gtag('config', 'G-G51VTF6CNS');
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -330,7 +331,7 @@
     <div class="modal-body">
       <p>This site would like to use <strong>Google Analytics</strong> cookies to count
         visits and see which features get used — no ads, no cross-site tracking on our
-        part. Nothing is loaded until you allow it. See
+        part. No analytics cookies are set unless you allow them. See
         <a href="https://policies.google.com/technologies/cookies" target="_blank" rel="noopener">Google's cookie policy</a>.</p>
       <p>Your choice is remembered in this browser either way.</p>
       <div class="editor-actions">
@@ -345,7 +346,8 @@
   var KEY = 'utsim.consent.v1';
   var v = null;
   try { v = localStorage.getItem(KEY); } catch(e){}
-  if (v === 'granted'){ loadGA(); return; }
+  function grant(){ gtag('consent', 'update', { analytics_storage: 'granted' }); }
+  if (v === 'granted'){ grant(); return; }
   if (v === 'denied') return;
   var bar = document.getElementById('cookieBar');
   bar.hidden = false;
@@ -353,7 +355,7 @@
   function choose(val){
     try { localStorage.setItem(KEY, val); } catch(e){}
     bar.hidden = true;
-    if (val === 'granted') loadGA();
+    if (val === 'granted') grant();
   }
   document.getElementById('cookieYes').addEventListener('click', function(){ choose('granted'); });
   document.getElementById('cookieNo').addEventListener('click', function(){ choose('denied'); });

@@ -19,10 +19,11 @@ header — see the Versioning section of the README.
   of the border and the measurement points.
 - Official "Buy me a coffee" button in the header button row (image
   served from the BMC CDN).
-- Google Analytics (gtag.js) page tracking, gated behind a centred
-  cookie-consent dialog on first visit: the GA script is only loaded
-  after "Allow analytics", and the choice (either way) is remembered
-  in localStorage.
+- Google Analytics (gtag.js) page tracking with Consent Mode v2 and
+  a centred cookie-consent dialog on first visit: the tag always
+  loads but all consent signals default to denied (no cookies);
+  "Allow analytics" upgrades analytics consent, and the choice
+  (either way) is remembered in localStorage.
 - Current speed is also visualised as a smooth area shading across
   the chart, using the Turbo rainbow colormap (blue = weak,
   green/yellow = moderate, red = strong, saturating at 1 kn; still
