@@ -3,6 +3,13 @@
 Version numbers (`v1.<n>`) are the commit count, as shown in the app
 header — see the Versioning section of the README.
 
+## v1.18 — 2026-07-18
+
+- Google Analytics switched to Consent Mode v2: the tag itself always
+  loads (so GA can verify the installation) but every consent signal
+  defaults to denied and no cookies are set; "Allow analytics" in the
+  cookie dialog upgrades analytics consent.
+
 ## v1.17 — 2026-07-18
 
 - New "Export case" / "Import case" buttons in the header: the full
@@ -19,11 +26,9 @@ header — see the Versioning section of the README.
   of the border and the measurement points.
 - Official "Buy me a coffee" button in the header button row (image
   served from the BMC CDN).
-- Google Analytics (gtag.js) page tracking with Consent Mode v2 and
-  a centred cookie-consent dialog on first visit: the tag always
-  loads but all consent signals default to denied (no cookies);
-  "Allow analytics" upgrades analytics consent, and the choice
-  (either way) is remembered in localStorage.
+- Google Analytics (gtag.js) page tracking behind a centred
+  cookie-consent dialog on first visit; the choice (either way) is
+  remembered in localStorage.
 - Current speed is also visualised as a smooth area shading across
   the chart, using the Turbo rainbow colormap (blue = weak,
   green/yellow = moderate, red = strong, saturating at 1 kn; still
