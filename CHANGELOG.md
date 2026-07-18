@@ -3,6 +3,17 @@
 Version numbers (`v1.<n>`) are the commit count, as shown in the app
 header — see the Versioning section of the README.
 
+## v1.21 — 2026-07-18
+
+- The simulation now models the current wind (tidal wind) effect: the
+  boat sails to the wind over the water — the true wind vector minus
+  the local current — with the polar re-read at that effective wind
+  speed and direction at every step, in beating, fetch mode and the
+  corrected laylines alike. A new "Tidal wind" On/Off switch in the
+  Wind panel (default on, saved with params and case files) allows
+  comparison with the old fixed-to-true-wind behaviour; the model
+  docs moved the effect from "not accounted for" to "accounted for".
+
 ## v1.20 — 2026-07-18
 
 - New read-only "Bias to course axis" field under the mean wind

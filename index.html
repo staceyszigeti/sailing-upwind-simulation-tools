@@ -92,7 +92,7 @@
     <div class="modal-body">
 
       <h3 class="ok">1 · Motion: vector addition every 2 seconds</h3>
-      <p>The boat is a point mass integrated with a simple time step (<strong>dt = 2 s</strong>). Its velocity <strong>over the ground</strong> is the sum of two vectors: the velocity through the water (pointed along the heading = wind direction ± tacking angle) and the local current. The tacking angle and boat speed come from the selected boat's <strong>upwind polar</strong>, linearly interpolated at the entered wind speed, and stay constant for the whole run.</p>
+      <p>The boat is a point mass integrated with a simple time step (<strong>dt = 2 s</strong>). Its velocity <strong>over the ground</strong> is the sum of two vectors: the velocity through the water (pointed along the heading = wind direction ± tacking angle) and the local current. The tacking angle and boat speed come from the selected boat's <strong>upwind polar</strong>. With <em>Tidal wind</em> on (the default) they are re-evaluated at every step against the wind over the <em>water</em> — the true wind vector minus the local current; with it off they are interpolated once at the entered wind speed and stay constant for the whole run.</p>
       <span class="formula">V_ground = V_boat(heading, through water) + V_current(x, y)</span>
       <span class="formula">position(t+dt) = position(t) + V_ground · dt</span>
       <figure class="physfig">
@@ -152,9 +152,34 @@
         <figcaption>Wherever the boat is, the current it feels is the distance-weighted mix of the four measurements — this is also what the faint arrow grid on the chart shows.</figcaption>
       </figure>
 
-      <h3 class="ok">3 · The tack decision: current-corrected laylines</h3>
+      <h3 class="ok">3 · Tidal wind: the sails feel the wind over the water</h3>
+      <p>The rig does not care how the air moves over the ground — it feels the air moving relative to the <strong>water</strong> the boat floats in. With the <em>Tidal wind</em> switch on (the default), at every step the local current vector is subtracted from the true wind vector, and the tacking angle and boat speed are re-read from the polar at this effective wind:</p>
+      <span class="formula">W_water = W_true − V_current(x, y)</span>
+      <p>A current running <strong>up-wind</strong> adds wind speed, a <strong>down-wind</strong> current takes it away, and a <strong>cross</strong> current rotates the effective wind by a few degrees — which shifts the no-go zone, the laylines and the tack points. Because the current field varies over the course, the two sides can literally sail in slightly different winds. Switching it off reverts to the simpler model where the boat holds its polar values against the true (over-ground) wind.</p>
+      <figure class="physfig">
+        <svg viewBox="0 0 340 200" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace" font-size="11">
+          <defs>
+            <marker id="ah-tw1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#a98600"/></marker>
+            <marker id="ah-tw2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3a7d5d"/></marker>
+            <marker id="ah-tw3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#23507a"/></marker>
+          </defs>
+          <circle cx="110" cy="34" r="3.5" fill="#1c1b18"/>
+          <line x1="110" y1="34" x2="110" y2="150" stroke="#a98600" stroke-width="2.6" marker-end="url(#ah-tw1)"/>
+          <text x="30" y="96" fill="#a98600">true wind</text>
+          <text x="30" y="109" fill="#5c584d" font-size="9">(over ground)</text>
+          <line x1="110" y1="34" x2="170" y2="62" stroke="#3a7d5d" stroke-width="2.4" marker-end="url(#ah-tw2)"/>
+          <text x="176" y="52" fill="#3a7d5d">current</text>
+          <line x1="170" y1="62" x2="110" y2="150" stroke="#23507a" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#ah-tw3)"/>
+          <text x="168" y="118" fill="#23507a">wind over water</text>
+          <text x="168" y="131" fill="#5c584d" font-size="9">(what the polar sees)</text>
+        </svg>
+        <figcaption>Vector subtraction: the wind over the water runs from the tip of the current vector to the tip of the true-wind vector. This current has a down-wind and a cross component — it takes a little wind away and rotates it; the polar is read at this effective wind.</figcaption>
+      </figure>
+
+      <h3 class="ok">4 · The tack decision: current-corrected laylines</h3>
       <p>At every step the model asks: <strong>if I tacked right now, would my course over ground on the other tack point at the mark?</strong> It computes the opposite tack's ground vector (boat vector on the other heading + local current) and compares its direction with the bearing to the mark. When the two align — the sign of the angle between them flips — the boat tacks.</p>
       <span class="formula">tack when: angle( V_ground_opposite , bearing to mark ) crosses 0</span>
+      <p><strong>One tack is not guaranteed.</strong> The test is re-run at every step against the <em>local</em> current — and, with tidal wind on, the local effective wind — so the corrected layline is a curve, not a straight line fixed in advance. In a varying field the condition can be satisfied, then lost again as the boat sails into different water (the opposite tack's ground vector drifts off the mark), so a run may legitimately contain two or more tacks before the final approach. A 20 s lock between tacks (section 5) keeps this from degenerating into rail-to-rail oscillation on the layline.</p>
       <p><strong>Direct sailing (fetch mode).</strong> In parallel, the model checks whether the mark is reachable <em>without</em> beating: it solves for the current-compensated heading whose ground velocity points straight at the mark, and if that heading lies outside the no-go zone (≥ TWA off the wind), the boat steers it directly. This mode takes over exactly where the direct heading exits the no-go zone — i.e. on the current-corrected layline — so the final leg is a continuously corrected curve that always converges on the mark, recovering any drift-induced overstand along the way. A run where even this cannot make progress (current stronger than the boat) is reported as unreachable.</p>
       <figure class="physfig">
         <svg viewBox="0 0 340 230" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace" font-size="10">
@@ -181,10 +206,10 @@
           <line x1="272" y1="60" x2="238" y2="72" stroke="#3a7d5d" stroke-width="2.2" marker-end="url(#ah-t4)"/>
           <text x="238" y="52" fill="#3a7d5d">current</text>
         </svg>
-        <figcaption>With current pushing towards the course, the true (COG) layline sits inside the geometric one — the boat tacks earlier than the dashed reference suggests. The opposite current shifts it outside.</figcaption>
+        <figcaption>With current pushing towards the course, the true (COG) layline sits inside the geometric one — the boat tacks earlier than the dashed reference suggests. The opposite current shifts it outside. (Uniform current shown, giving a single tack; in a varying field the run may need several.)</figcaption>
       </figure>
 
-      <h3 class="ok">4 · The six runs</h3>
+      <h3 class="ok">5 · The six runs</h3>
       <p>Each scenario–side pair is simulated independently: <strong>3 wind directions</strong> (left phase, mean, right phase — each held constant for the whole run) × <strong>2 strategies</strong> (left side = starboard tack first, right side = port tack first). Each strategy starts from its own end of the line: the left strategy at the pin, the right strategy at the committee boat. A run ends when the boat is within <strong>5 m</strong> of the mark (the final metres are sailed in fetch mode, homing on the mark); the elapsed times feed the results table.</p>
       <p>Two guards keep the integration honest: after a tack the boat must sail at least <strong>20 s</strong> before tacking again (prevents oscillation on the layline), and a run is abandoned after 4 simulated hours (reported as unreachable — typically when the current overpowers the boat). The chart frame and the four current measurement points are fixed to the start→mark course axis, so changing the wind direction moves the trajectories but never the course, the frame, or the current field.</p>
 
@@ -206,14 +231,14 @@
         <li><strong>Spatially varying current.</strong> The field is interpolated between your 4 measurement points (start, mark, left/right layline) by inverse-distance weighting, so each side of the course can have genuinely different water.</li>
         <li><strong>Current-corrected laylines.</strong> The boat tacks when the <em>course over ground</em> of the opposite tack fetches the mark — not the geometric layline. The chart draws these corrected laylines as thin blue lines (for the mean wind); the dashed grey lines are shown only as a no-current reference for comparison.</li>
         <li><strong>Wind direction scenarios.</strong> Each run uses a fixed wind direction: left phase, mean, or right phase. Comparing the three shows how sensitive the side choice is to where the wind sits in its oscillation.</li>
-        <li><strong>Boat performance from an upwind polar.</strong> The tacking angle and boat speed are read from the selected boat's polar table, linearly interpolated at the entered wind speed. Within a run they are constant.</li>
+        <li><strong>Boat performance from an upwind polar.</strong> The tacking angle and boat speed are read from the selected boat's polar table, linearly interpolated at the wind speed the boat actually feels.</li>
+        <li><strong>Current wind (tidal wind).</strong> With the <em>Tidal wind</em> switch on (default), the boat sails to the wind over the <em>water</em>: at every step the local current vector is subtracted from the true wind vector, and the polar angle/speed are re-read at that effective wind. A current running up-wind adds wind speed, a down-wind current removes it, and a cross current rotates the effective direction by a few degrees — enough to shift laylines and tack points. Switch it off to reproduce the simpler "boat holds its angle to the true wind" model.</li>
         <li><strong>Fetch/reach sailing on the final approach.</strong> When the mark no longer requires beating, the boat steers a current-compensated heading straight at it — so it always closes on the mark, recovers small overstands, and effectively tacks exactly on the current-corrected layline.</li>
         <li><strong>Start line geometry.</strong> Line length, plus an adjustable line skew: at 0° the line is square to the start→mark axis, and a non-zero skew swings the pin end around the committee boat (positive = pin up-course). The left strategy starts at the pin end, the right strategy at the committee-boat end, so line bias feeds directly into the side comparison.</li>
       </ul>
 
       <h3 class="no">Not accounted for</h3>
       <ul>
-        <li><strong>Current wind (tidal wind).</strong> In reality the boat sails in the wind relative to the water, i.e. true wind minus the current vector. A 0.5–1 kn current can rotate and change the effective wind by a few degrees / tenths of a knot. Here the boat holds its angle to the true (over-ground) wind.</li>
         <li><strong>Wind oscillation during a run.</strong> The wind direction is constant within each run — the boat does not gain from tacking on shifts. Phases are compared as separate static scenarios, not as a time series.</li>
         <li><strong>Wind speed variation and sailing modes.</strong> Wind speed sets the polar point but is constant in time and uniform across the course; there is no pinching/footing trade-off, no wave-state effect, and no gust response.</li>
         <li><strong>Tack losses.</strong> Tacks are instantaneous and free — no speed loss or turning time.</li>
@@ -255,7 +280,15 @@
       <div class="row"><label for="windMin" id="lblMin">Left phase (Δ°)</label><input id="windMin" type="number" value="-10" step="1" min="-180" max="180"></div>
       <div class="row"><label for="windMax" id="lblMax">Right phase (Δ°)</label><input id="windMax" type="number" value="5" step="1" min="-180" max="180"></div>
       <div class="row"><label for="tws">Wind speed (kn)</label><input id="tws" type="number" value="10" step="0.5" min="1"></div>
+      <div class="phasemode">
+        <span class="pm-label">Tidal wind</span>
+        <div class="seg" role="tablist" aria-label="Tidal wind (wind over water)">
+          <button type="button" class="seg-btn active" id="twOn" role="tab" aria-selected="true">On</button>
+          <button type="button" class="seg-btn" id="twOff" role="tab" aria-selected="false">Off</button>
+        </div>
+      </div>
       <p class="hint" id="phaseHint">Left/right phase given as an offset from the mean (e.g. −12 = 12° left of mean). Switch to <em>Absolute TWD</em> to type the two extreme wind directions directly.</p>
+      <p class="hint">With <em>Tidal wind</em> on, the boat sails to the wind over the <em>water</em>: at every step the local current is subtracted from the true wind vector, and the tacking angle / boat speed are re-read from the polar at that effective wind. A current running up-wind adds wind, a down-wind current takes it away, and a cross current rotates it.</p>
     </fieldset>
 
     <fieldset>

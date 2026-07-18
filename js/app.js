@@ -16,6 +16,8 @@ const $ = id => document.getElementById(id);
 let phaseMode = 'offset';
 // current direction convention: 'towards' (set) or 'from'
 let curDir = 'from';
+// tidal wind: sail to the wind over the water (true wind minus local current)
+let tidalWind = true;
 function norm360(a){ return ((a % 360) + 360) % 360; }
 function setPhaseMode(mode){
   if (mode === phaseMode) return;
@@ -59,7 +61,7 @@ function saveParams(){
   try {
     const fields = {};
     PARAM_IDS.forEach(id => fields[id] = $(id).value);
-    localStorage.setItem(LS_PARAMS, JSON.stringify({ fields, phaseMode, curDir }));
+    localStorage.setItem(LS_PARAMS, JSON.stringify({ fields, phaseMode, curDir, tidalWind }));
   } catch(e){}
 }
 function restoreParams(){
@@ -72,6 +74,9 @@ function restoreParams(){
     }
     if (s.curDir === 'towards' || s.curDir === 'from'){
       curDir = s.curDir; applyCurDirUI(curDir);
+    }
+    if (typeof s.tidalWind === 'boolean'){
+      tidalWind = s.tidalWind; applyTidalUI(tidalWind);
     }
   } catch(e){}
 }
@@ -144,7 +149,9 @@ const activeBoat = () => boats.find(b => b.id === activeId) || boats[0];
 
 // linear interpolation in the boat's upwind polar; clamps outside the table range
 function polarAt(boat, tws){
-  const pts = [...boat.polar].sort((a,b) => a.tws - b.tws);
+  return polarInterp([...boat.polar].sort((a,b) => a.tws - b.tws), tws);
+}
+function polarInterp(pts, tws){
   if (!pts.length) return { twa: 42, bsp: 5 };
   if (tws <= pts[0].tws) return { twa: pts[0].twa, bsp: pts[0].bsp };
   const last = pts[pts.length-1];
@@ -203,6 +210,9 @@ function readParams(){
     windMin: phase(v('windMin')),
     windMax: phase(v('windMax')),
     tws,
+    twsMs: tws * KN,
+    tidal: tidalWind,
+    polarSorted: [...activeBoat().polar].sort((a,b) => a.tws - b.tws),
     twa: Math.min(80, Math.max(20, pol.twa)),
     bsp: Math.max(0.3, pol.bsp) * KN,
     cur: [
@@ -274,6 +284,22 @@ function makeCurrentField(p, g){
   };
 }
 
+// ---- tidal wind: the wind the sails feel is the wind over the WATER ----
+// Effective wind = true (over-ground) wind vector minus the local current;
+// the polar is re-read at the effective wind speed. With the switch off, or in
+// still water, this reduces to the true wind and the nominal polar values.
+function effWind(p, twd, cur){
+  if (!p.tidal || (!cur.x && !cur.y)) return { twd, twa: p.twa, bsp: p.bsp };
+  const a = dirVec(twd + 180);                              // air velocity over ground
+  const rx = a.x*p.twsMs - cur.x, ry = a.y*p.twsMs - cur.y; // air velocity over water
+  const spd = Math.hypot(rx, ry);
+  const twdW = brgOf({ x: -rx, y: -ry });                   // direction it blows from
+  const pol = polarInterp(p.polarSorted, spd / KN);
+  return { twd: twdW,
+           twa: Math.min(80, Math.max(20, pol.twa)),
+           bsp: Math.max(0.3, pol.bsp) * KN };
+}
+
 // ---- simulation: one run ----
 // firstTack: +1 = right side (port tack first), -1 = left side (starboard first)
 function simulate(twd, firstTack, p, g, curAt){
@@ -285,6 +311,7 @@ function simulate(twd, firstTack, p, g, curAt){
   let step = 0;
   while (t < maxT){
     const cur = curAt(pos.x, pos.y);
+    const w = effWind(p, twd, cur);
     const toM = { x: g.M.x - pos.x, y: g.M.y - pos.y };
     const dm = Math.hypot(toM.x, toM.y);
     if (dm < closeR){ path.push({x:pos.x,y:pos.y,t}); return { time: t, path, ok:true }; }
@@ -295,17 +322,17 @@ function simulate(twd, firstTack, p, g, curAt){
     // has turned into a fetch. Solve V_bsp·b + current = k·u (u = unit vector to mark).
     const u = { x: toM.x/dm, y: toM.y/dm };
     const cu = cur.x*u.x + cur.y*u.y;
-    const disc = cu*cu - (cur.x*cur.x + cur.y*cur.y) + p.bsp*p.bsp;
+    const disc = cu*cu - (cur.x*cur.x + cur.y*cur.y) + w.bsp*w.bsp;
     if (disc > 0){
       const k = cu + Math.sqrt(disc);            // closing speed over ground along u
       if (k > 0.05){
-        const bx = (k*u.x - cur.x)/p.bsp, by = (k*u.y - cur.y)/p.bsp;
+        const bx = (k*u.x - cur.x)/w.bsp, by = (k*u.y - cur.y)/w.bsp;
         const hdgDirect = brgOf({ x: bx, y: by });
-        if (Math.abs(norm180(hdgDirect - twd)) >= p.twa - 0.5){  // outside the no-go zone
+        if (Math.abs(norm180(hdgDirect - w.twd)) >= w.twa - 0.5){  // outside the no-go zone
           // keep the tack in sync with the compensated heading: if fetch mode
           // later drops out (current turns the direct heading into the no-go
           // zone), the boat must resume beating on this side, not the stale one
-          const fetchTack = norm180(hdgDirect - twd) > 0 ? 1 : -1;
+          const fetchTack = norm180(hdgDirect - w.twd) > 0 ? 1 : -1;
           if (fetchTack !== tack){ tack = fetchTack; lastTack = t; }
           if (dm <= k*dt + 1){
             t += dm / k;
@@ -321,17 +348,17 @@ function simulate(twd, firstTack, p, g, curAt){
     }
 
     // --- beating: tack test — does the opposite tack's course-over-ground already fetch the mark?
-    const h2 = twd - tack * p.twa;
+    const h2 = w.twd - tack * w.twa;
     const d2 = dirVec(h2);
-    const v2 = { x: d2.x*p.bsp + cur.x, y: d2.y*p.bsp + cur.y };
+    const v2 = { x: d2.x*w.bsp + cur.x, y: d2.y*w.bsp + cur.y };
     const delta = norm180(brgOf(toM) - brgOf(v2));
     if (t - lastTack > tackLock && Math.abs(delta) < 90 && tack*delta <= 0){
       tack = -tack; lastTack = t;
       continue;
     }
-    const h = twd + tack * p.twa;
+    const h = w.twd + tack * w.twa;
     const dh = dirVec(h);
-    const v = { x: dh.x*p.bsp + cur.x, y: dh.y*p.bsp + cur.y };
+    const v = { x: dh.x*w.bsp + cur.x, y: dh.y*w.bsp + cur.y };
     pos = { x: pos.x + v.x*dt, y: pos.y + v.y*dt };
     t += dt; step++;
     if (step % 2 === 0) path.push({x:pos.x, y:pos.y, t});
@@ -342,7 +369,6 @@ function simulate(twd, firstTack, p, g, curAt){
 // ---- current-corrected layline: ground track of the final tack, integrated backwards from the mark ----
 // tackSign: +1 = left-side layline (final heading twd+twa), -1 = right-side (twd-twa)
 function correctedLayline(twd, tackSign, p, g, curAt){
-  const h = dirVec(twd + tackSign * p.twa);
   const m = dirVec(p.markBrg), rL = { x: m.y, y: -m.x };
   const lim = 4 * p.markDist;
   const dt = 4;
@@ -350,7 +376,9 @@ function correctedLayline(twd, tackSign, p, g, curAt){
   const pts = [{ ...pos }];
   for (let i = 0; i < 1500; i++){
     const c = curAt(pos.x, pos.y);
-    const vx = h.x*p.bsp + c.x, vy = h.y*p.bsp + c.y;
+    const w = effWind(p, twd, c);
+    const h = dirVec(w.twd + tackSign * w.twa);
+    const vx = h.x*w.bsp + c.x, vy = h.y*w.bsp + c.y;
     if (Math.hypot(vx, vy) < 0.02) break;           // current cancels the boat: no layline beyond here
     pos = { x: pos.x - vx*dt, y: pos.y - vy*dt };
     pts.push({ ...pos });
@@ -903,7 +931,7 @@ $('caseExp').addEventListener('click', () => {
     format: CASE_FORMAT,
     version: 1,
     exported: new Date().toISOString(),
-    fields, phaseMode, curDir,
+    fields, phaseMode, curDir, tidalWind,
     boat: { name: b.name, polar: b.polar },
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -948,6 +976,9 @@ $('caseImp').addEventListener('change', e => {
         if (data.curDir === 'towards' || data.curDir === 'from'){
           curDir = data.curDir; applyCurDirUI(curDir);
         }
+        if (typeof data.tidalWind === 'boolean'){
+          tidalWind = data.tidalWind; applyTidalUI(tidalWind);
+        }
         PARAM_IDS.forEach(id => { if (id in data.fields) $(id).value = data.fields[id]; });
         compute();
       }
@@ -989,6 +1020,21 @@ function applyCurDirUI(mode){
 }
 $('curTowards').addEventListener('click', () => setCurDir('towards'));
 $('curFrom').addEventListener('click', () => setCurDir('from'));
+
+function setTidal(on){
+  if (on === tidalWind) return;
+  tidalWind = on;
+  applyTidalUI(on);
+  compute();
+}
+function applyTidalUI(on){
+  $('twOn').classList.toggle('active', on);
+  $('twOff').classList.toggle('active', !on);
+  $('twOn').setAttribute('aria-selected', on);
+  $('twOff').setAttribute('aria-selected', !on);
+}
+$('twOn').addEventListener('click', () => setTidal(true));
+$('twOff').addEventListener('click', () => setTidal(false));
 
 if (window.UTSIM_VERSION){
   $('verTag').textContent = `v1.${window.UTSIM_VERSION.build} · ${window.UTSIM_VERSION.date}`;
