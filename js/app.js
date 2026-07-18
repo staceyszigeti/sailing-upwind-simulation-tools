@@ -383,6 +383,10 @@ function compute(){
   }));
   state = { p, g, curAt, runs, rot, unrot };
   renderBoatInfo();
+  // wind bias: mean TWD relative to the course axis (+ = wind right of the axis)
+  const bias = Math.round(norm180(p.windMean - p.markBrg));
+  $('windBias').value = bias === 0 ? '0° (square)'
+    : `${bias > 0 ? '+' : '−'}${Math.abs(bias)}° ${bias > 0 ? 'right' : 'left'}`;
   const nMeas = p.cur.filter(c => c.measured).length;
   $('curStatus').textContent = nMeas === 0
     ? 'No current points measured → running with no current.'
@@ -673,15 +677,15 @@ function draw(tShow){
   drawMarker(v, g.M, '#d9822b', 'Mark', dpr, 'circ');
 
   // wind rose: three wind-direction arrows, top right (rotated into course-up frame)
-  const wr = { x: W - 74*dpr, y: 64*dpr };
-  ctx.font = `${10*dpr}px 'IBM Plex Mono',monospace`;
+  const wr = { x: W - 110*dpr, y: 96*dpr };
+  ctx.font = `${15*dpr}px 'IBM Plex Mono',monospace`;
   ctx.fillStyle = getCss('--ink-dim');
   ctx.textAlign = 'center';
-  ctx.fillText('WIND', wr.x, wr.y - 44*dpr);
+  ctx.fillText('WIND', wr.x, wr.y - 66*dpr);
   runs.forEach(r => {
     const dv = dispVec(dirVec(r.twd));
-    ctx.strokeStyle = r.color; ctx.fillStyle = r.color; ctx.lineWidth = 2*dpr;
-    arrow(wr.x + dv.x*34*dpr, wr.y + dv.y*34*dpr, wr.x + dv.x*6*dpr, wr.y + dv.y*6*dpr, 1.3*dpr);
+    ctx.strokeStyle = r.color; ctx.fillStyle = r.color; ctx.lineWidth = 3*dpr;
+    arrow(wr.x + dv.x*51*dpr, wr.y + dv.y*51*dpr, wr.x + dv.x*9*dpr, wr.y + dv.y*9*dpr, 2*dpr);
   });
 
   // scale bar

@@ -3,6 +3,14 @@
 Version numbers (`v1.<n>`) are the commit count, as shown in the app
 header — see the Versioning section of the README.
 
+## v1.20 — 2026-07-18
+
+- New read-only "Bias to course axis" field under the mean wind
+  direction: the signed angle between the mean TWD and the
+  start→mark axis (e.g. "+10° right" = wind right of the axis,
+  "0° (square)" = a square course).
+- The wind rose in the chart's top-right corner is 1.5× bigger.
+
 ## v1.18 — 2026-07-18
 
 - Google Analytics switched to Consent Mode v2: the tag itself always

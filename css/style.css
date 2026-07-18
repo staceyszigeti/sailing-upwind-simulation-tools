@@ -151,6 +151,8 @@ legend{
   padding:5px 7px;width:100%;
 }
 .row input:focus{outline:2px solid var(--cyan);outline-offset:1px;border-color:var(--cyan)}
+.row input[readonly]{background:transparent;border-style:dashed;color:var(--ink-dim);cursor:default;font-size:.72rem}
+.row input[readonly]:focus{outline:none;border-color:var(--line)}
 .cur-grid{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px 8px;align-items:center}
 .cur-grid .hd{font-size:.68rem;color:var(--ink-dim);font-variant-caps:small-caps;text-transform:none;letter-spacing:.02em}
 .cur-grid .pt{font-size:.78rem;color:var(--ink)}
